@@ -12,6 +12,7 @@ First-pass anemometer firmware and web UI.
 - `firmware/` Arduino sketch and source files.
 - `web/` React + Vite frontend.
 - `docs/WIRING.md` hardware wiring diagram.
+- `docs/rpr-220-datasheet.pdf` local copy of the ROHM RPR-220 datasheet.
 - `scripts/build_web_assets.sh` build frontend and generate embedded C++ assets.
 - `scripts/compile_firmware.sh` compile firmware with `arduino-cli`.
 - `scripts/upload_firmware.sh` compile + upload firmware.
@@ -58,18 +59,21 @@ arduino-cli core update-index
 arduino-cli core install esp32:esp32
 ```
 
-For Lolin Lite, set your board FQBN if needed:
+For Lolin Lite, find and confirm your board FQBN:
 
 ```bash
-arduino-cli board listall | rg -i lolin
+arduino-cli board listall | rg -i "lolin|wemos"
+arduino-cli board list
 ```
 
 Examples:
 
 ```bash
-FQBN=esp32:esp32:esp32 ./scripts/compile_firmware.sh
-PORT=/dev/ttyUSB0 FQBN=esp32:esp32:esp32 ./scripts/upload_firmware.sh
+./scripts/compile_firmware.sh
+PORT=/dev/ttyUSB0 ./scripts/upload_firmware.sh
 ```
+
+Defaults use `FQBN=esp32:esp32:lolin32-lite` and can be overridden per command.
 
 ## Swapping Dummy -> Real Sensor
 
