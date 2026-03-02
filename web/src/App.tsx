@@ -195,47 +195,18 @@ function App() {
 
   return (
     <main className="page">
-      <section className="topBar">
-        <button type="button" className="settingsButton" onClick={() => setShowSettings((v) => !v)}>
-          Settings
-        </button>
-      </section>
-
-      {showSettings && (
-        <section className="panel settingsPanel">
-          <p className="meta">
-            AP: {wifiStatus?.ap.active ? `on (${wifiStatus.ap.ssid} / ${wifiStatus.ap.ip})` : 'off'} | STA:{' '}
-            {wifiStatus?.sta.connected
-              ? `connected (${wifiStatus.sta.ssid} / ${wifiStatus.sta.ip})`
-              : 'not connected'}
-          </p>
-          <form className="wifiForm" onSubmit={onWifiSubmit}>
-            <input
-              value={wifiSsid}
-              onChange={(e) => setWifiSsid(e.target.value)}
-              placeholder="Wi-Fi SSID"
-              required
-            />
-            <input
-              value={wifiPassword}
-              onChange={(e) => setWifiPassword(e.target.value)}
-              placeholder="Wi-Fi Password"
-              type="password"
-            />
-            <div className="buttons">
-              <button type="submit">Save and Connect</button>
-              <button type="button" onClick={onWifiClear}>
-                Clear Saved
-              </button>
-            </div>
-          </form>
-          {wifiMessage && <p className="meta">{wifiMessage}</p>}
-        </section>
-      )}
-
       <section className="panel hero">
         <p className="eyebrow">Anemometer</p>
-        <h1>Live Wind Monitor</h1>
+        <div className="heroHeader">
+          <h1>Live Wind Monitor</h1>
+          <button
+            type="button"
+            className="settingsButton"
+            onClick={() => setShowSettings((v) => !v)}
+          >
+            Settings
+          </button>
+        </div>
         <div className="stats">
           <article>
             <h2>Current</h2>
@@ -280,6 +251,46 @@ function App() {
         </p>
         {error && <p className="error">{error}</p>}
       </section>
+
+      {showSettings && (
+        <section className="settingsModalWrap" onClick={() => setShowSettings(false)}>
+          <article className="panel settingsModal" onClick={(e) => e.stopPropagation()}>
+            <header className="chartHeader">
+              <h2>Device Settings</h2>
+              <button type="button" onClick={() => setShowSettings(false)}>
+                Close
+              </button>
+            </header>
+            <p className="meta">
+              AP: {wifiStatus?.ap.active ? `on (${wifiStatus.ap.ssid} / ${wifiStatus.ap.ip})` : 'off'} | STA:{' '}
+              {wifiStatus?.sta.connected
+                ? `connected (${wifiStatus.sta.ssid} / ${wifiStatus.sta.ip})`
+                : 'not connected'}
+            </p>
+            <form className="wifiForm" onSubmit={onWifiSubmit}>
+              <input
+                value={wifiSsid}
+                onChange={(e) => setWifiSsid(e.target.value)}
+                placeholder="Wi-Fi SSID"
+                required
+              />
+              <input
+                value={wifiPassword}
+                onChange={(e) => setWifiPassword(e.target.value)}
+                placeholder="Wi-Fi Password"
+                type="password"
+              />
+              <div className="buttons">
+                <button type="submit">Save and Connect</button>
+                <button type="button" onClick={onWifiClear}>
+                  Clear Saved
+                </button>
+              </div>
+            </form>
+            {wifiMessage && <p className="meta">{wifiMessage}</p>}
+          </article>
+        </section>
+      )}
     </main>
   )
 }
