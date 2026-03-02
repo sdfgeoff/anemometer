@@ -97,6 +97,8 @@ Defaults use `FQBN=esp32:esp32:lolin32-lite` and can be overridden per command.
 Edit constants in `firmware/firmware.ino`:
 - `kUseDummySource` -> `false`
 - `kRpr220Pin`
+- `kRpr220IrLedEnablePin`
+- `kRpr220IrLedActiveHigh`
 - `kPulsesPerRevolution` (currently `12`)
 - `kMpsPerHz` (calibration)
 

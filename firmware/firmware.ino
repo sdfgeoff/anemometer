@@ -11,6 +11,8 @@
 namespace {
 constexpr bool kUseDummySource = true;
 constexpr uint8_t kRpr220Pin = 18;
+constexpr uint8_t kRpr220IrLedEnablePin = 19;
+constexpr bool kRpr220IrLedActiveHigh = true;
 constexpr uint16_t kPulsesPerRevolution = 12;
 constexpr float kMpsPerHz = 1.0f;  // Replace with your calibration factor.
 
@@ -43,6 +45,13 @@ bool hasWifiCredentials = false;
 bool staConnectInProgress = false;
 bool staConnected = false;
 uint32_t staConnectStartedMs = 0;
+
+void setupRpr220IrLedControl() {
+  pinMode(kRpr220IrLedEnablePin, OUTPUT);
+  digitalWrite(kRpr220IrLedEnablePin, kRpr220IrLedActiveHigh ? HIGH : LOW);
+  Serial.printf("[sensor] RPR220 IR LED pin %u defaulted %s\n", (unsigned int)kRpr220IrLedEnablePin,
+                kRpr220IrLedActiveHigh ? "ON" : "OFF");
+}
 
 void logLine(const char* msg) {
   Serial.println(msg);
@@ -326,6 +335,8 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   logLine("[boot] anemometer starting");
+
+  setupRpr220IrLedControl();
 
   windSource = kUseDummySource ? static_cast<WindSource*>(&dummySource)
                                : static_cast<WindSource*>(&rpr220Source);
