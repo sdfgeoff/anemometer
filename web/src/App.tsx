@@ -8,6 +8,9 @@ import {
 
 const MAX_POINTS_24H = 24 * 60 * 2
 const MAX_POINTS_WEEK = 7 * 24 * 60 * 2
+const SAMPLE_INTERVAL_SECONDS = 30
+
+type DisplayUnit = 'mps' | 'kmh' | 'kn'
 
 type WifiStatus = {
   ok: boolean
@@ -25,21 +28,25 @@ type WifiStatus = {
   credentialsSaved: boolean
 }
 
-function formatMps(v?: number): string {
-  if (v === undefined) return '--'
-  return `${v.toFixed(2)} m/s`
+function unitLabel(unit: DisplayUnit): string {
+  if (unit === 'mps') return 'm/s'
+  if (unit === 'kmh') return 'km/h'
+  return 'kn'
 }
 
-function speedToKmh(mps: number): number {
-  return mps * 3.6
-}
-
-function speedToKnots(mps: number): number {
+function convertSpeedFromMps(mps: number, unit: DisplayUnit): number {
+  if (unit === 'mps') return mps
+  if (unit === 'kmh') return mps * 3.6
   return mps * 1.943844
 }
 
-function formatTs(tsSeconds: number): string {
-  const d = new Date(tsSeconds * 1000)
+function formatSpeed(mps: number | undefined, unit: DisplayUnit): string {
+  if (mps === undefined) return '--'
+  return `${convertSpeedFromMps(mps, unit).toFixed(2)} ${unitLabel(unit)}`
+}
+
+function formatTs(tsMs: number): string {
+  const d = new Date(tsMs)
   const mm = `${d.getMonth() + 1}`
   const dd = `${d.getDate()}`
   const hh = `${d.getHours()}`.padStart(2, '0')
@@ -47,7 +54,15 @@ function formatTs(tsSeconds: number): string {
   return `${mm}/${dd} ${hh}:${mi}`
 }
 
-function TinyChart({ points }: { points: WindPoint[] }) {
+function TinyChart({
+  points,
+  unit,
+  nowMs,
+}: {
+  points: WindPoint[]
+  unit: DisplayUnit
+  nowMs: number
+}) {
   const { path, yGrid, xTicks } = useMemo(() => {
     const width = 1000
     const height = 300
@@ -66,17 +81,15 @@ function TinyChart({ points }: { points: WindPoint[] }) {
       return { path: '', yGrid: emptyY, xTicks: [] as Array<{ x: number; label: string }> }
     }
 
-    const maxY = Math.max(1, ...points.map((p) => p.mps))
-    const minY = Math.min(0, ...points.map((p) => p.mps))
+    const displayValues = points.map((p) => convertSpeedFromMps(p.mps, unit))
+    const maxY = Math.max(1, ...displayValues)
+    const minY = Math.min(0, ...displayValues)
     const spanY = Math.max(0.001, maxY - minY)
-    const tsStart = points[0].ts
-    const tsEnd = points[points.length - 1].ts
-    const tsSpan = Math.max(1, tsEnd - tsStart)
 
-    const d = points
-      .map((p, i) => {
-        const x = padLeft + (i / (points.length - 1)) * plotW
-        const y = padTop + (1 - (p.mps - minY) / spanY) * plotH
+    const d = displayValues
+      .map((v, i) => {
+        const x = padLeft + (i / (displayValues.length - 1)) * plotW
+        const y = padTop + (1 - (v - minY) / spanY) * plotH
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
       })
       .join(' ')
@@ -89,17 +102,17 @@ function TinyChart({ points }: { points: WindPoint[] }) {
       }
     })
 
+    // Use browser-local clock since ESP has no RTC; map sample index to now.
+    const startMs = nowMs - (points.length - 1) * SAMPLE_INTERVAL_SECONDS * 1000
     const ticks = [0, 1, 2, 3, 4].map((i) => {
       const frac = i / 4
-      const ts = Math.round(tsStart + frac * tsSpan)
-      return {
-        x: padLeft + frac * plotW,
-        label: formatTs(ts),
-      }
+      const x = padLeft + frac * plotW
+      const labelMs = startMs + frac * (nowMs - startMs)
+      return { x, label: formatTs(labelMs) }
     })
 
     return { path: d, yGrid: grid, xTicks: ticks }
-  }, [points])
+  }, [points, unit, nowMs])
 
   return (
     <svg className="chart" viewBox="0 0 1000 300" preserveAspectRatio="none">
@@ -138,6 +151,8 @@ function App() {
   const [dayPoints, setDayPoints] = useState<WindPoint[]>([])
   const [weekPoints, setWeekPoints] = useState<WindPoint[]>([])
   const [selectedRange, setSelectedRange] = useState<'24h' | 'week'>('24h')
+  const [selectedUnit, setSelectedUnit] = useState<DisplayUnit>('kmh')
+  const [browserNowMs, setBrowserNowMs] = useState(() => Date.now())
   const [error, setError] = useState<string | null>(null)
   const [wifiStatus, setWifiStatus] = useState<WifiStatus | null>(null)
   const [wifiSsid, setWifiSsid] = useState('')
@@ -211,6 +226,11 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setBrowserNowMs(Date.now()), 30000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const selectedPoints = selectedRange === '24h' ? dayPoints : weekPoints
   const latestMps = current?.mps ?? selectedPoints.at(-1)?.mps
 
@@ -261,18 +281,22 @@ function App() {
             Settings
           </button>
         </div>
+        <div className="heroControls">
+          <label htmlFor="unitSelect">Units</label>
+          <select
+            id="unitSelect"
+            value={selectedUnit}
+            onChange={(e) => setSelectedUnit(e.target.value as DisplayUnit)}
+          >
+            <option value="kmh">km/h</option>
+            <option value="mps">m/s</option>
+            <option value="kn">knots</option>
+          </select>
+        </div>
         <div className="stats">
           <article>
-            <h2>Current</h2>
-            <p>{formatMps(latestMps)}</p>
-          </article>
-          <article>
-            <h2>Current (km/h)</h2>
-            <p>{latestMps !== undefined ? `${speedToKmh(latestMps).toFixed(2)} km/h` : '--'}</p>
-          </article>
-          <article>
-            <h2>Current (kn)</h2>
-            <p>{latestMps !== undefined ? `${speedToKnots(latestMps).toFixed(2)} kn` : '--'}</p>
+            <h2>Current Speed</h2>
+            <p>{formatSpeed(latestMps, selectedUnit)}</p>
           </article>
           <article>
             <h2>Source</h2>
@@ -299,9 +323,9 @@ function App() {
             </button>
           </div>
         </header>
-        <TinyChart points={selectedPoints} />
+        <TinyChart points={selectedPoints} unit={selectedUnit} nowMs={browserNowMs} />
         <p className="meta">
-          {selectedPoints.length} points | sample every 30s | auto-refresh without page reload
+          {selectedPoints.length} points | sample every 30s | axis times use browser local clock
         </p>
         {error && <p className="error">{error}</p>}
       </section>

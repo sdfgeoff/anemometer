@@ -47,6 +47,25 @@ body {
   gap: 0.75rem;
 }
 
+.heroControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.heroControls label {
+  color: #4f5d75;
+  font-size: 0.9rem;
+}
+
+.heroControls select {
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  background: #fff;
+  font: inherit;
+}
+
 .settingsModalWrap {
   position: fixed;
   inset: 0;
@@ -78,7 +97,7 @@ p {
 .stats {
   display: grid;
   gap: 0.7rem;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .stats article {
