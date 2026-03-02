@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
 import {
   createWindDataProvider,
@@ -8,6 +8,22 @@ import {
 
 const MAX_POINTS_24H = 24 * 60 * 2
 const MAX_POINTS_WEEK = 7 * 24 * 60 * 2
+
+type WifiStatus = {
+  ok: boolean
+  ap: {
+    active: boolean
+    ssid: string
+    ip: string
+  }
+  sta: {
+    status: number
+    connected: boolean
+    ssid: string
+    ip: string
+  }
+  credentialsSaved: boolean
+}
 
 function formatMps(v?: number): string {
   if (v === undefined) return '--'
@@ -57,6 +73,10 @@ function App() {
   const [weekPoints, setWeekPoints] = useState<WindPoint[]>([])
   const [selectedRange, setSelectedRange] = useState<'24h' | 'week'>('24h')
   const [error, setError] = useState<string | null>(null)
+  const [wifiStatus, setWifiStatus] = useState<WifiStatus | null>(null)
+  const [wifiSsid, setWifiSsid] = useState('')
+  const [wifiPassword, setWifiPassword] = useState('')
+  const [wifiMessage, setWifiMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -90,21 +110,75 @@ function App() {
       }
     }
 
+    const loadWifiStatus = async () => {
+      try {
+        const res = await fetch('/api/wifi/status')
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        const data = (await res.json()) as WifiStatus
+        if (!cancelled) {
+          setWifiStatus(data)
+          setWifiSsid((prev) => (prev.length === 0 ? data.sta.ssid ?? '' : prev))
+        }
+      } catch {
+        if (!cancelled) {
+          setWifiStatus(null)
+        }
+      }
+    }
+
     loadCurrent()
     loadHistories()
+    loadWifiStatus()
 
     const currentTimer = window.setInterval(loadCurrent, 5000)
     const historyTimer = window.setInterval(loadHistories, 30000)
+    const wifiTimer = window.setInterval(loadWifiStatus, 5000)
 
     return () => {
       cancelled = true
       window.clearInterval(currentTimer)
       window.clearInterval(historyTimer)
+      window.clearInterval(wifiTimer)
     }
   }, [])
 
   const selectedPoints = selectedRange === '24h' ? dayPoints : weekPoints
   const latestMps = current?.mps ?? selectedPoints.at(-1)?.mps
+
+  const onWifiSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setWifiMessage('Saving Wi-Fi credentials and connecting...')
+
+    const body = new URLSearchParams()
+    body.set('ssid', wifiSsid)
+    body.set('password', wifiPassword)
+
+    try {
+      const res = await fetch('/api/wifi/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setWifiMessage('Saved. The anemometer is now attempting STA connection.')
+    } catch (err) {
+      setWifiMessage(`Failed to save Wi-Fi config: ${(err as Error).message}`)
+    }
+  }
+
+  const onWifiClear = async () => {
+    setWifiMessage('Clearing Wi-Fi credentials...')
+    try {
+      const res = await fetch('/api/wifi/clear', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setWifiPassword('')
+      setWifiMessage('Saved credentials cleared.')
+    } catch (err) {
+      setWifiMessage(`Failed to clear Wi-Fi config: ${(err as Error).message}`)
+    }
+  }
 
   return (
     <main className="page">
@@ -125,6 +199,40 @@ function App() {
             <p>{current?.source ?? 'n/a'}</p>
           </article>
         </div>
+      </section>
+
+      <section className="panel">
+        <header className="chartHeader">
+          <h2>Wi-Fi Provisioning</h2>
+        </header>
+        <p className="meta">
+          AP: {wifiStatus?.ap.active ? `on (${wifiStatus.ap.ssid} / ${wifiStatus.ap.ip})` : 'off'} |
+          STA:{' '}
+          {wifiStatus?.sta.connected
+            ? `connected (${wifiStatus.sta.ssid} / ${wifiStatus.sta.ip})`
+            : 'not connected'}
+        </p>
+        <form className="wifiForm" onSubmit={onWifiSubmit}>
+          <input
+            value={wifiSsid}
+            onChange={(e) => setWifiSsid(e.target.value)}
+            placeholder="Wi-Fi SSID"
+            required
+          />
+          <input
+            value={wifiPassword}
+            onChange={(e) => setWifiPassword(e.target.value)}
+            placeholder="Wi-Fi Password"
+            type="password"
+          />
+          <div className="buttons">
+            <button type="submit">Save and Connect</button>
+            <button type="button" onClick={onWifiClear}>
+              Clear Saved
+            </button>
+          </div>
+        </form>
+        {wifiMessage && <p className="meta">{wifiMessage}</p>}
       </section>
 
       <section className="panel">

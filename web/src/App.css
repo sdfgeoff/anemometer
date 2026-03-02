@@ -85,6 +85,21 @@ p {
   gap: 0.5rem;
 }
 
+.wifiForm {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.wifiForm input {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  background: #fff;
+}
+
 button {
   border: 1px solid #264653;
   background: transparent;

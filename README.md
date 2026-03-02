@@ -27,6 +27,21 @@ First-pass anemometer firmware and web UI.
   - `GET /api/current`
   - `GET /api/history?range=24h`
   - `GET /api/history?range=week`
+  - `GET /api/wifi/status`
+  - `POST /api/wifi/config` (`ssid`, `password`)
+  - `POST /api/wifi/clear`
+
+## Wi-Fi Provisioning Flow
+
+1. Device boots and starts an open AP: `anemometer`.
+2. Connect phone/laptop to that AP and open `http://192.168.4.1`.
+3. Enter SSID/password in the web page and submit.
+4. Device saves credentials and attempts STA connection.
+5. On successful STA connect, firmware prints IP over serial as:
+   - `[wifi] STA connected. IP=...`
+
+By default AP is disabled after STA connect. If you want AP to remain active, set
+`kKeepApAfterStaConnect = true` in `firmware/firmware.ino`.
 
 ## Local Web Dev (dummy source)
 
@@ -83,12 +98,6 @@ Edit constants in `firmware/firmware.ino`:
 - `kPulsesPerRevolution` (currently `12`)
 - `kMpsPerHz` (calibration)
 
-## Wi-Fi Mode
+## Serial Logging
 
-Default is ESP32 AP mode:
-- SSID: `anemometer`
-- Password: `windmeter123`
-
-Change in `firmware/firmware.ino`:
-- `kUseApMode = false`
-- `kStaSsid` / `kStaPassword`
+Firmware logs boot, Wi-Fi state changes, and each 30-second sample over serial at `115200`.
