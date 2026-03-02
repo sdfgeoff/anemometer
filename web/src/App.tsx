@@ -38,41 +38,95 @@ function speedToKnots(mps: number): number {
   return mps * 1.943844
 }
 
+function formatTs(tsSeconds: number): string {
+  const d = new Date(tsSeconds * 1000)
+  const mm = `${d.getMonth() + 1}`
+  const dd = `${d.getDate()}`
+  const hh = `${d.getHours()}`.padStart(2, '0')
+  const mi = `${d.getMinutes()}`.padStart(2, '0')
+  return `${mm}/${dd} ${hh}:${mi}`
+}
+
 function TinyChart({ points }: { points: WindPoint[] }) {
-  const { path, gridY } = useMemo(() => {
+  const { path, yGrid, xTicks } = useMemo(() => {
+    const width = 1000
+    const height = 300
+    const padLeft = 58
+    const padRight = 16
+    const padTop = 10
+    const padBottom = 34
+    const plotW = width - padLeft - padRight
+    const plotH = height - padTop - padBottom
+
     if (points.length < 2) {
-      return { path: '', gridY: [52, 104, 156, 208] }
+      const emptyY = [0, 1, 2, 3, 4].map((i) => ({
+        y: padTop + (i / 4) * plotH,
+        value: 0,
+      }))
+      return { path: '', yGrid: emptyY, xTicks: [] as Array<{ x: number; label: string }> }
     }
 
-    const width = 1000
-    const height = 260
     const maxY = Math.max(1, ...points.map((p) => p.mps))
     const minY = Math.min(0, ...points.map((p) => p.mps))
     const spanY = Math.max(0.001, maxY - minY)
-    const lines = [0.2, 0.4, 0.6, 0.8].map((f) => height * f)
+    const tsStart = points[0].ts
+    const tsEnd = points[points.length - 1].ts
+    const tsSpan = Math.max(1, tsEnd - tsStart)
 
     const d = points
       .map((p, i) => {
-        const x = (i / (points.length - 1)) * width
-        const y = height - ((p.mps - minY) / spanY) * height
+        const x = padLeft + (i / (points.length - 1)) * plotW
+        const y = padTop + (1 - (p.mps - minY) / spanY) * plotH
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
       })
       .join(' ')
 
-    return { path: d, gridY: lines }
+    const grid = [0, 1, 2, 3, 4].map((i) => {
+      const frac = i / 4
+      return {
+        y: padTop + frac * plotH,
+        value: maxY - frac * spanY,
+      }
+    })
+
+    const ticks = [0, 1, 2, 3, 4].map((i) => {
+      const frac = i / 4
+      const ts = Math.round(tsStart + frac * tsSpan)
+      return {
+        x: padLeft + frac * plotW,
+        label: formatTs(ts),
+      }
+    })
+
+    return { path: d, yGrid: grid, xTicks: ticks }
   }, [points])
 
   return (
-    <svg className="chart" viewBox="0 0 1000 260" preserveAspectRatio="none">
+    <svg className="chart" viewBox="0 0 1000 300" preserveAspectRatio="none">
       <defs>
         <linearGradient id="lineGradient" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#2a9d8f" />
           <stop offset="100%" stopColor="#264653" />
         </linearGradient>
       </defs>
-      <rect x="0" y="0" width="1000" height="260" fill="#f2efe7" />
-      {gridY.map((y) => (
-        <line key={y} className="chartGrid" x1="0" y1={y} x2="1000" y2={y} />
+      <rect x="0" y="0" width="1000" height="300" fill="#f2efe7" />
+      <line className="chartAxis" x1="58" y1="10" x2="58" y2="266" />
+      <line className="chartAxis" x1="58" y1="266" x2="984" y2="266" />
+      {yGrid.map((g) => (
+        <g key={`y-${g.y}`}>
+          <line className="chartGrid" x1="58" y1={g.y} x2="984" y2={g.y} />
+          <text className="chartAxisLabel" x="52" y={g.y + 4} textAnchor="end">
+            {g.value.toFixed(1)}
+          </text>
+        </g>
+      ))}
+      {xTicks.map((t) => (
+        <g key={`x-${t.x}`}>
+          <line className="chartTick" x1={t.x} y1="266" x2={t.x} y2="272" />
+          <text className="chartAxisLabel" x={t.x} y="288" textAnchor="middle">
+            {t.label}
+          </text>
+        </g>
       ))}
       <path d={path} fill="none" stroke="url(#lineGradient)" strokeWidth="4" />
     </svg>

@@ -153,6 +153,22 @@ button.active {
   stroke-dasharray: 4 6;
 }
 
+.chartAxis {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.2;
+}
+
+.chartTick {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1;
+}
+
+.chartAxisLabel {
+  fill: #4f5d75;
+  font-size: 20px;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
 .meta {
   margin-top: 0.5rem;
   color: #4f5d75;
