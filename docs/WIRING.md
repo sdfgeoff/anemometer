@@ -7,33 +7,9 @@
 - IR LED enable pin: `GPIO19` (firmware defaults this pin ON at boot).
 - ESP32 logic: `3.3V`.
 
-## Wiring Diagram (Mermaid)
+## Wiring Diagram (SVG)
 
-```mermaid
-flowchart LR
-  subgraph ESP[ESP32 LOLIN LITE]
-    E3V3[3V3]
-    EGND[GND]
-    EGPIO18[GPIO18 - pulse input]
-    EGPIO19[GPIO19 - IR LED enable]
-  end
-
-  subgraph RPR[RPR220 Bare Sensor]
-    IR_A[IR LED Anode]
-    IR_K[IR LED Cathode]
-    PT_C[Phototransistor Collector]
-    PT_E[Phototransistor Emitter]
-    OUT[(OUT Node)]
-  end
-
-  EGPIO19 -->|through 150R to 220R| IR_A
-  IR_K --> EGND
-
-  E3V3 -->|10k pull-up| OUT
-  PT_C --> OUT
-  OUT --> EGPIO18
-  PT_E --> EGND
-```
+![RPR220 to ESP32 wiring](./wiring-rpr220-esp32.svg)
 
 ## Pin Summary
 - `GPIO19` drives the IR LED current path.
