@@ -1,0 +1,19 @@
+# Node
+web/node_modules/
+web/dist/
+
+# Arduino/ESP build outputs
+firmware/build/
+firmware/.arduino/
+*.bin
+*.elf
+*.map
+
+# Generated embedded web assets
+firmware/src/web_assets.generated.cpp
+firmware/src/web_assets.generated.h
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
