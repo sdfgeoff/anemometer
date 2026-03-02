@@ -121,6 +121,12 @@ button.active {
   border: 1px solid rgba(0, 0, 0, 0.14);
 }
 
+.chartGrid {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
 .meta {
   margin-top: 0.5rem;
   color: #4f5d75;

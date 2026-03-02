@@ -34,23 +34,32 @@ function speedToKmh(mps: number): number {
   return mps * 3.6
 }
 
+function speedToKnots(mps: number): number {
+  return mps * 1.943844
+}
+
 function TinyChart({ points }: { points: WindPoint[] }) {
-  const path = useMemo(() => {
-    if (points.length < 2) return ''
+  const { path, gridY } = useMemo(() => {
+    if (points.length < 2) {
+      return { path: '', gridY: [52, 104, 156, 208] }
+    }
 
     const width = 1000
     const height = 260
     const maxY = Math.max(1, ...points.map((p) => p.mps))
     const minY = Math.min(0, ...points.map((p) => p.mps))
     const spanY = Math.max(0.001, maxY - minY)
+    const lines = [0.2, 0.4, 0.6, 0.8].map((f) => height * f)
 
-    return points
+    const d = points
       .map((p, i) => {
         const x = (i / (points.length - 1)) * width
         const y = height - ((p.mps - minY) / spanY) * height
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
       })
       .join(' ')
+
+    return { path: d, gridY: lines }
   }, [points])
 
   return (
@@ -62,6 +71,9 @@ function TinyChart({ points }: { points: WindPoint[] }) {
         </linearGradient>
       </defs>
       <rect x="0" y="0" width="1000" height="260" fill="#f2efe7" />
+      {gridY.map((y) => (
+        <line key={y} className="chartGrid" x1="0" y1={y} x2="1000" y2={y} />
+      ))}
       <path d={path} fill="none" stroke="url(#lineGradient)" strokeWidth="4" />
     </svg>
   )
@@ -77,6 +89,7 @@ function App() {
   const [wifiSsid, setWifiSsid] = useState('')
   const [wifiPassword, setWifiPassword] = useState('')
   const [wifiMessage, setWifiMessage] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -195,6 +208,10 @@ function App() {
             <p>{latestMps !== undefined ? `${speedToKmh(latestMps).toFixed(2)} km/h` : '--'}</p>
           </article>
           <article>
+            <h2>Current (kn)</h2>
+            <p>{latestMps !== undefined ? `${speedToKnots(latestMps).toFixed(2)} kn` : '--'}</p>
+          </article>
+          <article>
             <h2>Source</h2>
             <p>{current?.source ?? 'n/a'}</p>
           </article>
@@ -203,36 +220,45 @@ function App() {
 
       <section className="panel">
         <header className="chartHeader">
-          <h2>Wi-Fi Provisioning</h2>
+          <h2>Device Settings</h2>
+          <button type="button" onClick={() => setShowSettings((v) => !v)}>
+            {showSettings ? 'Hide Settings' : 'Show Settings'}
+          </button>
         </header>
-        <p className="meta">
-          AP: {wifiStatus?.ap.active ? `on (${wifiStatus.ap.ssid} / ${wifiStatus.ap.ip})` : 'off'} |
-          STA:{' '}
-          {wifiStatus?.sta.connected
-            ? `connected (${wifiStatus.sta.ssid} / ${wifiStatus.sta.ip})`
-            : 'not connected'}
-        </p>
-        <form className="wifiForm" onSubmit={onWifiSubmit}>
-          <input
-            value={wifiSsid}
-            onChange={(e) => setWifiSsid(e.target.value)}
-            placeholder="Wi-Fi SSID"
-            required
-          />
-          <input
-            value={wifiPassword}
-            onChange={(e) => setWifiPassword(e.target.value)}
-            placeholder="Wi-Fi Password"
-            type="password"
-          />
-          <div className="buttons">
-            <button type="submit">Save and Connect</button>
-            <button type="button" onClick={onWifiClear}>
-              Clear Saved
-            </button>
-          </div>
-        </form>
-        {wifiMessage && <p className="meta">{wifiMessage}</p>}
+        {showSettings ? (
+          <>
+            <p className="meta">
+              AP: {wifiStatus?.ap.active ? `on (${wifiStatus.ap.ssid} / ${wifiStatus.ap.ip})` : 'off'} |
+              STA:{' '}
+              {wifiStatus?.sta.connected
+                ? `connected (${wifiStatus.sta.ssid} / ${wifiStatus.sta.ip})`
+                : 'not connected'}
+            </p>
+            <form className="wifiForm" onSubmit={onWifiSubmit}>
+              <input
+                value={wifiSsid}
+                onChange={(e) => setWifiSsid(e.target.value)}
+                placeholder="Wi-Fi SSID"
+                required
+              />
+              <input
+                value={wifiPassword}
+                onChange={(e) => setWifiPassword(e.target.value)}
+                placeholder="Wi-Fi Password"
+                type="password"
+              />
+              <div className="buttons">
+                <button type="submit">Save and Connect</button>
+                <button type="button" onClick={onWifiClear}>
+                  Clear Saved
+                </button>
+              </div>
+            </form>
+            {wifiMessage && <p className="meta">{wifiMessage}</p>}
+          </>
+        ) : (
+          <p className="meta">Wi-Fi provisioning is hidden by default. Open settings to configure it.</p>
+        )}
       </section>
 
       <section className="panel">
