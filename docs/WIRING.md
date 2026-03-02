@@ -15,12 +15,14 @@
 - `GPIO19` drives the IR LED current path.
   - `GPIO19 HIGH` means IR LED ON with current wiring.
 - `GPIO18` reads pulses from the phototransistor output node.
-- `OUT Node` is **not** tied directly to GND; only the phototransistor emitter goes to GND.
+- `GPIO18` sees a pull-up via `R2 (10k)` to `3V3`; this is not a direct short to `3V3`.
+- Only the phototransistor emitter and IR LED cathode connect to GND.
 
 ## Practical Notes
 - If pulse polarity is inverted, switch ISR trigger in firmware (`FALLING` <-> `RISING`).
-- If wiring is noisy, add `100nF` from `OUT` to `GND`.
+- If wiring is noisy, add `100nF` from the `collector/GPIO18 sense line` to `GND`.
 - Conversion to m/s still requires calibration (`kMpsPerHz` in firmware).
+- RPR220 datasheet references test conditions around `IF=10mA`/`20mA`; `R1=220Ω` at 3.3V gives a moderate LED drive current.
 
 ## Optional Improvements
 - For lower GPIO current or stronger drive margin, use a small transistor/MOSFET to switch the IR LED from `3V3`.

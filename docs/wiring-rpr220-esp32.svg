@@ -1,81 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860">
   <defs>
     <style>
-      .bg { fill: #f8f5ee; }
-      .panel { fill: #ffffff; stroke: #264653; stroke-width: 2; rx: 14; }
-      .title { font: 700 26px 'IBM Plex Sans', Arial, sans-serif; fill: #102a43; }
-      .subtitle { font: 600 18px 'IBM Plex Sans', Arial, sans-serif; fill: #102a43; }
-      .label { font: 500 16px 'IBM Plex Sans', Arial, sans-serif; fill: #223; }
-      .small { font: 500 14px 'IBM Plex Sans', Arial, sans-serif; fill: #334; }
-      .wire-power { stroke: #e63946; stroke-width: 4; fill: none; }
+      .bg { fill: #f6f3ec; }
+      .panel { fill: #ffffff; stroke: #1f3b4d; stroke-width: 2; }
+      .chip { fill: #eef6f1; stroke: #1f3b4d; stroke-width: 2; }
+      .title { font: 700 30px 'IBM Plex Sans', Arial, sans-serif; fill: #102a43; }
+      .h2 { font: 700 22px 'IBM Plex Sans', Arial, sans-serif; fill: #102a43; }
+      .txt { font: 500 16px 'IBM Plex Sans', Arial, sans-serif; fill: #1a1a1a; }
+      .small { font: 500 14px 'IBM Plex Sans', Arial, sans-serif; fill: #2d3748; }
+      .wire-vcc { stroke: #d62839; stroke-width: 4; fill: none; }
       .wire-gnd { stroke: #1d3557; stroke-width: 4; fill: none; }
-      .wire-signal { stroke: #2a9d8f; stroke-width: 4; fill: none; }
+      .wire-sig { stroke: #2a9d8f; stroke-width: 4; fill: none; }
       .wire-led { stroke: #f4a261; stroke-width: 4; fill: none; }
       .node { fill: #fff; stroke: #222; stroke-width: 2; }
-      .chip { fill: #f1faee; stroke: #264653; stroke-width: 2; }
-      .note { fill: #fff6d5; stroke: #c08a00; stroke-width: 1.5; rx: 8; }
+      .res { fill: #fff; stroke: #3a3a3a; stroke-width: 2; }
+      .cap { stroke: #3a3a3a; stroke-width: 3; }
+      .opt { stroke-dasharray: 7 6; }
+      .note { fill: #fff9dd; stroke: #b08a00; stroke-width: 1.5; }
     </style>
-    <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
-      <polygon points="0,0 10,4 0,8" fill="#444"/>
-    </marker>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="1200" height="760"/>
-  <text class="title" x="34" y="44">RPR220 Bare Sensor Wiring to ESP32 LOLIN32 Lite</text>
+  <rect class="bg" x="0" y="0" width="1280" height="860"/>
+  <text class="title" x="36" y="46">RPR220 Bare Sensor Schematic (ESP32 LOLIN32 Lite)</text>
 
-  <rect class="panel" x="36" y="80" width="460" height="620"/>
-  <text class="subtitle" x="58" y="116">ESP32</text>
+  <rect class="panel" x="36" y="90" width="470" height="700" rx="14"/>
+  <text class="h2" x="58" y="130">ESP32 LOLIN32 Lite (Dev Board)</text>
 
-  <rect class="chip" x="90" y="150" width="350" height="510" rx="10"/>
-  <text class="label" x="112" y="182">3V3</text>
-  <circle class="node" cx="410" cy="176" r="6"/>
+  <rect class="chip" x="92" y="170" width="360" height="580" rx="10"/>
+  <text class="txt" x="116" y="214">3V3</text>
+  <circle class="node" cx="420" cy="208" r="6"/>
 
-  <text class="label" x="112" y="252">GND</text>
-  <circle class="node" cx="410" cy="246" r="6"/>
+  <text class="txt" x="116" y="294">GND</text>
+  <circle class="node" cx="420" cy="288" r="6"/>
 
-  <text class="label" x="112" y="332">GPIO18 (Pulse Input)</text>
-  <circle class="node" cx="410" cy="326" r="6"/>
+  <text class="txt" x="116" y="374">GPIO18 (Pulse Input)</text>
+  <circle class="node" cx="420" cy="368" r="6"/>
 
-  <text class="label" x="112" y="412">GPIO19 (IR LED Enable)</text>
-  <circle class="node" cx="410" cy="406" r="6"/>
+  <text class="txt" x="116" y="454">GPIO19 (IR LED Control)</text>
+  <circle class="node" cx="420" cy="448" r="6"/>
 
-  <text class="small" x="112" y="468">Firmware defaults GPIO19 = ON</text>
-  <text class="small" x="112" y="492">(active-high with this wiring)</text>
+  <text class="small" x="116" y="510">Firmware defaults GPIO19 HIGH (LED ON)</text>
 
-  <rect class="panel" x="700" y="80" width="460" height="620"/>
-  <text class="subtitle" x="722" y="116">RPR220 Bare Device + Passives</text>
+  <rect class="panel" x="560" y="90" width="684" height="700" rx="14"/>
+  <text class="h2" x="582" y="130">RPR220 Bare Sensor + External Components</text>
 
-  <rect class="chip" x="760" y="150" width="340" height="240" rx="10"/>
-  <text class="label" x="780" y="184">IR LED Anode</text>
-  <circle class="node" cx="1068" cy="178" r="6"/>
-  <text class="label" x="780" y="232">IR LED Cathode</text>
-  <circle class="node" cx="1068" cy="226" r="6"/>
-  <text class="label" x="780" y="282">Phototransistor Collector</text>
-  <circle class="node" cx="1068" cy="276" r="6"/>
-  <text class="label" x="780" y="332">Phototransistor Emitter</text>
-  <circle class="node" cx="1068" cy="326" r="6"/>
+  <rect class="chip" x="808" y="240" width="380" height="280" rx="10"/>
+  <text class="txt" x="832" y="278">RPR220</text>
 
-  <circle class="node" cx="860" cy="520" r="8"/>
-  <text class="label" x="784" y="548">OUT Node</text>
+  <text class="txt" x="838" y="322">IR LED Anode</text>
+  <circle class="node" cx="1158" cy="316" r="6"/>
 
-  <rect class="note" x="760" y="580" width="360" height="86"/>
-  <text class="small" x="778" y="608">Rseries (GPIO19 -> IR Anode): 150Ω to 220Ω</text>
-  <text class="small" x="778" y="632">Pull-up (3V3 -> OUT): 10kΩ</text>
-  <text class="small" x="778" y="656">Optional noise cap: 100nF from OUT to GND</text>
+  <text class="txt" x="838" y="372">IR LED Cathode</text>
+  <circle class="node" cx="1158" cy="366" r="6"/>
 
-  <!-- LED drive path -->
-  <path class="wire-led" d="M410 406 C540 406, 610 178, 1068 178"/>
-  <text class="small" x="560" y="280">via 150Ω..220Ω resistor</text>
+  <text class="txt" x="838" y="432">Phototransistor Collector</text>
+  <circle class="node" cx="1158" cy="426" r="6"/>
 
-  <path class="wire-gnd" d="M1068 226 C1000 226, 940 246, 410 246"/>
+  <text class="txt" x="838" y="482">Phototransistor Emitter</text>
+  <circle class="node" cx="1158" cy="476" r="6"/>
 
-  <!-- Phototransistor and OUT wiring -->
-  <path class="wire-signal" d="M1068 276 C980 276, 930 500, 860 520"/>
-  <path class="wire-gnd" d="M1068 326 C980 326, 950 246, 410 246"/>
+  <!-- R1 LED series resistor -->
+  <rect class="res" x="650" y="430" width="120" height="36" rx="4"/>
+  <text class="txt" x="666" y="453">R1 220Ω</text>
 
-  <path class="wire-signal" d="M860 520 C760 520, 690 326, 410 326"/>
-  <path class="wire-power" d="M410 176 C690 176, 760 520, 860 520"/>
-  <text class="small" x="600" y="168">10kΩ pull-up to 3V3</text>
+  <!-- R2 pull-up resistor -->
+  <rect class="res" x="690" y="180" width="120" height="36" rx="4"/>
+  <text class="txt" x="706" y="203">R2 10kΩ</text>
 
-  <text class="small" x="58" y="730">Legend: Red = 3V3, Blue = GND, Green = pulse/output node, Orange = IR LED drive.</text>
+  <!-- Optional capacitor -->
+  <line class="cap opt" x1="760" y1="620" x2="760" y2="650"/>
+  <line class="cap opt" x1="780" y1="620" x2="780" y2="650"/>
+  <text class="small" x="796" y="640">C1 100nF (optional)</text>
+
+  <!-- LED drive path: GPIO19 -> R1 -> LED anode -->
+  <path class="wire-led" d="M420 448 L650 448"/>
+  <path class="wire-led" d="M770 448 C880 448, 980 316, 1158 316"/>
+
+  <!-- LED cathode to GND -->
+  <path class="wire-gnd" d="M1158 366 C1020 366, 900 288, 420 288"/>
+
+  <!-- Pull-up path: 3V3 -> R2 -> collector/sense net -->
+  <path class="wire-vcc" d="M420 208 L690 208"/>
+  <path class="wire-vcc" d="M810 208 C930 208, 1000 426, 1158 426"/>
+
+  <!-- Sense path collector -> GPIO18 -->
+  <path class="wire-sig" d="M1158 426 C980 426, 900 368, 420 368"/>
+
+  <!-- Emitter to GND -->
+  <path class="wire-gnd" d="M1158 476 C980 476, 900 288, 420 288"/>
+
+  <!-- Optional cap from collector/sense net to GND -->
+  <path class="wire-sig opt" d="M920 426 L760 426 L760 620"/>
+  <path class="wire-gnd opt" d="M780 650 L780 700 L420 700 L420 288"/>
+
+  <rect class="note" x="582" y="700" width="638" height="70" rx="8"/>
+  <text class="small" x="602" y="728">GPIO18 is connected to 3V3 only through R2 (10k pull-up), not directly hard-wired.</text>
+  <text class="small" x="602" y="752">This is the standard phototransistor pull-up topology for digital sensing.</text>
 </svg>
