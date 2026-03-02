@@ -11,6 +11,18 @@ const MAX_POINTS_WEEK = 7 * 24 * 60 * 2
 const SAMPLE_INTERVAL_SECONDS = 30
 
 type DisplayUnit = 'mps' | 'kmh' | 'kn'
+type RangeKey = '15m' | '30m' | '1h' | '4h' | '12h' | '24h' | '3d' | 'week'
+
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; samples: number }> = [
+  { key: '15m', label: 'Last 15 min', samples: (15 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '30m', label: 'Last 30 min', samples: (30 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '1h', label: 'Last 1 hour', samples: (60 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '4h', label: 'Last 4 hours', samples: (4 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '12h', label: 'Last 12 hours', samples: (12 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '24h', label: 'Last 24 hours', samples: (24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: '3d', label: 'Last 3 days', samples: (3 * 24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+  { key: 'week', label: 'Last week', samples: (7 * 24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+]
 
 type WifiStatus = {
   ok: boolean
@@ -150,7 +162,7 @@ function App() {
   const [current, setCurrent] = useState<CurrentResponse | null>(null)
   const [dayPoints, setDayPoints] = useState<WindPoint[]>([])
   const [weekPoints, setWeekPoints] = useState<WindPoint[]>([])
-  const [selectedRange, setSelectedRange] = useState<'24h' | 'week'>('24h')
+  const [selectedRange, setSelectedRange] = useState<RangeKey>('4h')
   const [selectedUnit, setSelectedUnit] = useState<DisplayUnit>('kmh')
   const [browserNowMs, setBrowserNowMs] = useState(() => Date.now())
   const [error, setError] = useState<string | null>(null)
@@ -231,7 +243,10 @@ function App() {
     return () => window.clearInterval(timer)
   }, [])
 
-  const selectedPoints = selectedRange === '24h' ? dayPoints : weekPoints
+  const selectedRangeOption =
+    RANGE_OPTIONS.find((option) => option.key === selectedRange) ?? RANGE_OPTIONS[5]
+  const basePoints = weekPoints.length > 0 ? weekPoints : dayPoints
+  const selectedPoints = basePoints.slice(-selectedRangeOption.samples)
   const latestMps = current?.mps ?? selectedPoints.at(-1)?.mps
 
   const onWifiSubmit = async (e: FormEvent) => {
@@ -308,24 +323,22 @@ function App() {
       <section className="panel">
         <header className="chartHeader">
           <h2>History</h2>
-          <div className="buttons">
-            <button
-              className={selectedRange === '24h' ? 'active' : ''}
-              onClick={() => setSelectedRange('24h')}
-            >
-              Last 24h
-            </button>
-            <button
-              className={selectedRange === 'week' ? 'active' : ''}
-              onClick={() => setSelectedRange('week')}
-            >
-              Last 7d
-            </button>
-          </div>
+          <select
+            className="rangeSelect"
+            value={selectedRange}
+            onChange={(e) => setSelectedRange(e.target.value as RangeKey)}
+          >
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </header>
         <TinyChart points={selectedPoints} unit={selectedUnit} nowMs={browserNowMs} />
         <p className="meta">
-          {selectedPoints.length} points | sample every 30s | axis times use browser local clock
+          {selectedRangeOption.label} | {selectedPoints.length} points | sample every 30s | axis
+          times use browser local clock
         </p>
         {error && <p className="error">{error}</p>}
       </section>
