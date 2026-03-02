@@ -66,6 +66,38 @@ function formatTs(tsMs: number): string {
   return `${mm}/${dd} ${hh}:${mi}`
 }
 
+function buildNiceYAxis(maxValue: number): { top: number; step: number; tickCount: number } {
+  const safeMax = Math.max(0.1, maxValue)
+  const targetTicks = 6
+  const roughStep = safeMax / targetTicks
+  const power = Math.pow(10, Math.floor(Math.log10(roughStep)))
+  const multipliers = [1, 1.5, 2, 2.5, 5, 10]
+
+  let step = multipliers[multipliers.length - 1] * power
+  for (const m of multipliers) {
+    const candidate = m * power
+    if (candidate >= roughStep) {
+      step = candidate
+      break
+    }
+  }
+
+  let top = Math.ceil(safeMax / step) * step
+  if (top < step * 4) {
+    top = step * 4
+  }
+
+  let tickCount = Math.round(top / step)
+  if (tickCount > 10) {
+    const factor = Math.ceil(tickCount / 8)
+    step *= factor
+    top = Math.ceil(safeMax / step) * step
+    tickCount = Math.round(top / step)
+  }
+
+  return { top, step, tickCount }
+}
+
 function TinyChart({
   points,
   unit,
@@ -86,31 +118,30 @@ function TinyChart({
     const plotH = height - padTop - padBottom
 
     if (points.length < 2) {
-      const emptyY = [0, 1, 2, 3, 4].map((i) => ({
-        y: padTop + (i / 4) * plotH,
-        value: 0,
-      }))
+      const axis = buildNiceYAxis(5)
+      const emptyY = Array.from({ length: axis.tickCount + 1 }, (_, i) => {
+        const value = axis.top - i * axis.step
+        return { y: padTop + (i / axis.tickCount) * plotH, value }
+      })
       return { path: '', yGrid: emptyY, xTicks: [] as Array<{ x: number; label: string }> }
     }
 
     const displayValues = points.map((p) => convertSpeedFromMps(p.mps, unit))
-    const maxY = Math.max(1, ...displayValues)
-    const minY = Math.min(0, ...displayValues)
-    const spanY = Math.max(0.001, maxY - minY)
+    const axis = buildNiceYAxis(Math.max(1, ...displayValues))
 
     const d = displayValues
       .map((v, i) => {
         const x = padLeft + (i / (displayValues.length - 1)) * plotW
-        const y = padTop + (1 - (v - minY) / spanY) * plotH
+        const y = padTop + (1 - v / axis.top) * plotH
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
       })
       .join(' ')
 
-    const grid = [0, 1, 2, 3, 4].map((i) => {
-      const frac = i / 4
+    const grid = Array.from({ length: axis.tickCount + 1 }, (_, i) => {
+      const frac = i / axis.tickCount
       return {
         y: padTop + frac * plotH,
-        value: maxY - frac * spanY,
+        value: axis.top - i * axis.step,
       }
     })
 
