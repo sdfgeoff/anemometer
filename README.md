@@ -77,7 +77,7 @@ Defaults use `FQBN=esp32:esp32:lolin32-lite` and can be overridden per command.
 
 ## Swapping Dummy -> Real Sensor
 
-Edit constants in `firmware/anemometer.ino`:
+Edit constants in `firmware/firmware.ino`:
 - `kUseDummySource` -> `false`
 - `kRpr220Pin`
 - `kPulsesPerRevolution` (currently `12`)
@@ -89,6 +89,6 @@ Default is ESP32 AP mode:
 - SSID: `anemometer`
 - Password: `windmeter123`
 
-Change in `firmware/anemometer.ino`:
+Change in `firmware/firmware.ino`:
 - `kUseApMode = false`
 - `kStaSsid` / `kStaPassword`

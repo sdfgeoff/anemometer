@@ -72,6 +72,9 @@ for rel in "${files[@]}"; do
   manifest_entries+=("{\"$url_path\", \"$mime\", $symbol, ${symbol}_len, true}")
 done
 
+perl -0pi -e 's/^unsigned char ([A-Za-z0-9_]+)\[\] = \{/static const uint8_t ${1}[] PROGMEM = {/mg' "$OUT_CPP"
+perl -0pi -e 's/^unsigned int ([A-Za-z0-9_]+) = ([0-9]+);/static const size_t $1 = $2;/mg' "$OUT_CPP"
+
 {
   echo
   echo "const EmbeddedAsset kEmbeddedAssets[] = {"

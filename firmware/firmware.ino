@@ -31,15 +31,21 @@ WindSource* windSource = nullptr;
 WindHistory history;
 uint32_t lastSampleMs = 0;
 
-bool wantsGzip() {
-  if (!server.hasHeader("Accept-Encoding")) {
-    return false;
-  }
-  return server.header("Accept-Encoding").indexOf("gzip") >= 0;
-}
-
-void streamJsonPoints(const WindSample* samples, size_t count, const char* rangeLabel) {
+void streamHistoryJson(const char* rangeLabel, uint32_t cutoffTs, bool applyCutoff) {
   char line[96];
+  const size_t total = history.size();
+  size_t count = 0;
+  WindSample sample{};
+
+  for (size_t i = 0; i < total; i++) {
+    if (!history.getFromOldest(i, sample)) {
+      break;
+    }
+    if (!applyCutoff || sample.tsSeconds >= cutoffTs) {
+      count++;
+    }
+  }
+
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "application/json", "");
   server.sendContent("{");
@@ -47,13 +53,22 @@ void streamJsonPoints(const WindSample* samples, size_t count, const char* range
            (unsigned int)count);
   server.sendContent(line);
 
-  for (size_t i = 0; i < count; i++) {
-    if (i > 0) {
+  size_t emitted = 0;
+  for (size_t i = 0; i < total; i++) {
+    if (!history.getFromOldest(i, sample)) {
+      break;
+    }
+    if (applyCutoff && sample.tsSeconds < cutoffTs) {
+      continue;
+    }
+
+    if (emitted > 0) {
       server.sendContent(",");
     }
-    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f}",
-             (unsigned long)samples[i].tsSeconds, samples[i].mps);
+    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f}", (unsigned long)sample.tsSeconds,
+             sample.mps);
     server.sendContent(line);
+    emitted++;
   }
 
   server.sendContent("]}");
@@ -81,17 +96,20 @@ void handleHistory() {
     range = server.arg("range");
   }
 
-  static WindSample scratch[WindHistory::kCapacity];
-  size_t count = 0;
-
   if (range == "week") {
-    count = history.copyAll(scratch, WindHistory::kCapacity);
-    streamJsonPoints(scratch, count, "week");
+    streamHistoryJson("week", 0, false);
     return;
   }
 
-  count = history.copyLastSeconds(kWindow24hSeconds, scratch, WindHistory::kCapacity);
-  streamJsonPoints(scratch, count, "24h");
+  WindSample latest{};
+  if (!history.latest(latest)) {
+    streamHistoryJson("24h", 0, false);
+    return;
+  }
+
+  const uint32_t cutoffTs =
+      latest.tsSeconds > kWindow24hSeconds ? latest.tsSeconds - kWindow24hSeconds : 0;
+  streamHistoryJson("24h", cutoffTs, true);
 }
 
 void handleHealth() {
@@ -135,7 +153,8 @@ void handleNotFound() {
 
 void setupRoutes() {
   server.enableCORS(true);
-  server.collectHeaders("Accept-Encoding", 1);
+  const char* headers[] = {"Accept-Encoding"};
+  server.collectHeaders(headers, 1);
 
   server.on("/api/health", HTTP_GET, handleHealth);
   server.on("/api/current", HTTP_GET, handleCurrent);
