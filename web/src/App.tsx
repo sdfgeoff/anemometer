@@ -6,22 +6,18 @@ import {
   type WindPoint,
 } from './dataProvider'
 
-const MAX_POINTS_24H = 24 * 60 * 2
-const MAX_POINTS_WEEK = 7 * 24 * 60 * 2
-const SAMPLE_INTERVAL_SECONDS = 30
-
 type DisplayUnit = 'mps' | 'kmh' | 'kn'
 type RangeKey = '15m' | '30m' | '1h' | '4h' | '12h' | '24h' | '3d' | 'week'
 
-const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; samples: number }> = [
-  { key: '15m', label: 'Last 15 min', samples: (15 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '30m', label: 'Last 30 min', samples: (30 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '1h', label: 'Last 1 hour', samples: (60 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '4h', label: 'Last 4 hours', samples: (4 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '12h', label: 'Last 12 hours', samples: (12 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '24h', label: 'Last 24 hours', samples: (24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: '3d', label: 'Last 3 days', samples: (3 * 24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
-  { key: 'week', label: 'Last week', samples: (7 * 24 * 60 * 60) / SAMPLE_INTERVAL_SECONDS },
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; seconds: number }> = [
+  { key: '15m', label: 'Last 15 min', seconds: 15 * 60 },
+  { key: '30m', label: 'Last 30 min', seconds: 30 * 60 },
+  { key: '1h', label: 'Last 1 hour', seconds: 60 * 60 },
+  { key: '4h', label: 'Last 4 hours', seconds: 4 * 60 * 60 },
+  { key: '12h', label: 'Last 12 hours', seconds: 12 * 60 * 60 },
+  { key: '24h', label: 'Last 24 hours', seconds: 24 * 60 * 60 },
+  { key: '3d', label: 'Last 3 days', seconds: 3 * 24 * 60 * 60 },
+  { key: 'week', label: 'Last week', seconds: 7 * 24 * 60 * 60 },
 ]
 
 type WifiStatus = {
@@ -145,12 +141,16 @@ function TinyChart({
       }
     })
 
-    // Use browser-local clock since ESP has no RTC; map sample index to now.
-    const startMs = nowMs - (points.length - 1) * SAMPLE_INTERVAL_SECONDS * 1000
+    const oldestTs = points[0].ts
+    const latestTs = points[points.length - 1].ts
+    const spanTs = Math.max(1, latestTs - oldestTs)
+
+    // ESP has no RTC, so map relative sample offsets onto browser wall clock.
     const ticks = [0, 1, 2, 3, 4].map((i) => {
       const frac = i / 4
       const x = padLeft + frac * plotW
-      const labelMs = startMs + frac * (nowMs - startMs)
+      const pointTs = oldestTs + Math.round(frac * spanTs)
+      const labelMs = nowMs - (latestTs - pointTs) * 1000
       return { x, label: formatTs(labelMs) }
     })
 
@@ -191,8 +191,7 @@ function TinyChart({
 
 function App() {
   const [current, setCurrent] = useState<CurrentResponse | null>(null)
-  const [dayPoints, setDayPoints] = useState<WindPoint[]>([])
-  const [weekPoints, setWeekPoints] = useState<WindPoint[]>([])
+  const [historyPoints, setHistoryPoints] = useState<WindPoint[]>([])
   const [selectedRange, setSelectedRange] = useState<RangeKey>('4h')
   const [selectedUnit, setSelectedUnit] = useState<DisplayUnit>('kmh')
   const [browserNowMs, setBrowserNowMs] = useState(() => Date.now())
@@ -202,6 +201,14 @@ function App() {
   const [wifiPassword, setWifiPassword] = useState('')
   const [wifiMessage, setWifiMessage] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+
+  const selectedRangeOption =
+    RANGE_OPTIONS.find((option) => option.key === selectedRange) ?? RANGE_OPTIONS[3]
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setBrowserNowMs(Date.now()), 30000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -219,15 +226,11 @@ function App() {
       }
     }
 
-    const loadHistories = async () => {
+    const loadHistory = async () => {
       try {
-        const [day, week] = await Promise.all([
-          provider.getHistory('24h'),
-          provider.getHistory('week'),
-        ])
+        const history = await provider.getHistory(selectedRangeOption.seconds)
         if (!cancelled) {
-          setDayPoints(day.points.slice(-MAX_POINTS_24H))
-          setWeekPoints(week.points.slice(-MAX_POINTS_WEEK))
+          setHistoryPoints(history.points)
           setError(null)
         }
       } catch (e) {
@@ -254,11 +257,11 @@ function App() {
     }
 
     loadCurrent()
-    loadHistories()
+    loadHistory()
     loadWifiStatus()
 
     const currentTimer = window.setInterval(loadCurrent, 5000)
-    const historyTimer = window.setInterval(loadHistories, 30000)
+    const historyTimer = window.setInterval(loadHistory, 5000)
     const wifiTimer = window.setInterval(loadWifiStatus, 5000)
 
     return () => {
@@ -267,18 +270,9 @@ function App() {
       window.clearInterval(historyTimer)
       window.clearInterval(wifiTimer)
     }
-  }, [])
+  }, [selectedRangeOption.seconds])
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setBrowserNowMs(Date.now()), 30000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  const selectedRangeOption =
-    RANGE_OPTIONS.find((option) => option.key === selectedRange) ?? RANGE_OPTIONS[5]
-  const basePoints = weekPoints.length > 0 ? weekPoints : dayPoints
-  const selectedPoints = basePoints.slice(-selectedRangeOption.samples)
-  const latestMps = current?.mps ?? selectedPoints.at(-1)?.mps
+  const latestMps = current?.mps ?? historyPoints.at(-1)?.mps
 
   const onWifiSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -366,10 +360,10 @@ function App() {
             ))}
           </select>
         </header>
-        <TinyChart points={selectedPoints} unit={selectedUnit} nowMs={browserNowMs} />
+        <TinyChart points={historyPoints} unit={selectedUnit} nowMs={browserNowMs} />
         <p className="meta">
-          {selectedRangeOption.label} | {selectedPoints.length} points | sample every 30s | axis
-          times use browser local clock
+          {selectedRangeOption.label} | {historyPoints.length} points | timestamps mapped to browser
+          local clock
         </p>
         {error && <p className="error">{error}</p>}
       </section>

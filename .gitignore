@@ -5,6 +5,7 @@ web/dist/
 # Arduino/ESP build outputs
 firmware/build/
 firmware/.arduino/
+/build/
 *.bin
 *.elf
 *.map

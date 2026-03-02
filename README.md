@@ -3,8 +3,13 @@
 First-pass anemometer firmware and web UI.
 
 - Wind source abstraction with `Dummy` and `RPR220` implementations.
-- 30-second samples stored in a 7-day ring buffer on ESP32 RAM.
-- API endpoints for current speed, last 24h history, and last 7d history.
+- Multi-resolution history stored on ESP32 RAM:
+  - 5s for last 15m
+  - 10s for last 30m
+  - 30s for last 1h
+  - 60s for last 24h
+  - 300s for last 7d
+- API endpoints for current speed and history windows requested in seconds.
 - React/Vite dashboard embedded into firmware binary as static assets.
 
 ## Repo Layout
@@ -19,14 +24,11 @@ First-pass anemometer firmware and web UI.
 
 ## Firmware Behavior
 
-- Sampling interval: `30s`
-- Last 24h graph data: `2,880` points
-- Last week history: up to `20,160` points
+- Base sampling interval: `5s`
 - API:
   - `GET /api/health`
   - `GET /api/current`
-  - `GET /api/history?range=24h`
-  - `GET /api/history?range=week`
+  - `GET /api/history?seconds=<N>`
   - `GET /api/wifi/status`
   - `POST /api/wifi/config` (`ssid`, `password`)
   - `POST /api/wifi/clear`
@@ -67,7 +69,7 @@ These files are ignored in git and regenerated as needed.
 
 ## Arduino CLI Setup
 
-`arduino-cli` is required (not installed in this environment at time of scaffold).
+`arduino-cli` is required.
 
 ```bash
 arduino-cli core update-index
@@ -100,4 +102,12 @@ Edit constants in `firmware/firmware.ino`:
 
 ## Serial Logging
 
-Firmware logs boot, Wi-Fi state changes, and each 30-second sample over serial at `115200`.
+Firmware logs boot, Wi-Fi state changes, and each 5-second sample over serial at `115200`.
+
+## Unit Tests (Host)
+
+The multi-resolution history logic has host-side unit tests:
+
+```bash
+./scripts/run_unit_tests.sh
+```

@@ -14,8 +14,7 @@ constexpr uint8_t kRpr220Pin = 18;
 constexpr uint16_t kPulsesPerRevolution = 12;
 constexpr float kMpsPerHz = 1.0f;  // Replace with your calibration factor.
 
-constexpr uint32_t kSampleIntervalMs = 30000;
-constexpr uint32_t kWindow24hSeconds = 24 * 60 * 60;
+constexpr uint32_t kSampleIntervalMs = 5000;
 
 const char* kApSsid = "anemometer";
 constexpr bool kApOpenNetwork = true;
@@ -142,44 +141,22 @@ void handleWiFiState() {
   }
 }
 
-void streamHistoryJson(const char* rangeLabel, uint32_t cutoffTs, bool applyCutoff) {
+void streamJsonPoints(const WindSample* samples, size_t count, uint32_t requestedSeconds) {
   char line[96];
-  const size_t total = history.size();
-  size_t count = 0;
-  WindSample sample{};
-
-  for (size_t i = 0; i < total; i++) {
-    if (!history.getFromOldest(i, sample)) {
-      break;
-    }
-    if (!applyCutoff || sample.tsSeconds >= cutoffTs) {
-      count++;
-    }
-  }
-
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "application/json", "");
   server.sendContent("{");
-  snprintf(line, sizeof(line), "\"range\":\"%s\",\"count\":%u,\"points\":[", rangeLabel,
-           (unsigned int)count);
+  snprintf(line, sizeof(line), "\"seconds\":%lu,\"count\":%u,\"points\":[",
+           (unsigned long)requestedSeconds, (unsigned int)count);
   server.sendContent(line);
 
-  size_t emitted = 0;
-  for (size_t i = 0; i < total; i++) {
-    if (!history.getFromOldest(i, sample)) {
-      break;
-    }
-    if (applyCutoff && sample.tsSeconds < cutoffTs) {
-      continue;
-    }
-
-    if (emitted > 0) {
+  for (size_t i = 0; i < count; i++) {
+    if (i > 0) {
       server.sendContent(",");
     }
-    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f}", (unsigned long)sample.tsSeconds,
-             sample.mps);
+    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f}",
+             (unsigned long)samples[i].tsSeconds, samples[i].mps);
     server.sendContent(line);
-    emitted++;
   }
 
   server.sendContent("]}");
@@ -194,31 +171,28 @@ void handleCurrent() {
 
   char body[192];
   snprintf(body, sizeof(body),
-           "{\"ok\":true,\"hasData\":true,\"source\":\"%s\",\"sampleIntervalSeconds\":30,"
+           "{\"ok\":true,\"hasData\":true,\"source\":\"%s\",\"sampleIntervalSeconds\":%lu,"
            "\"ts\":%lu,\"mps\":%.3f}",
-           windSource->name(), (unsigned long)latest.tsSeconds, latest.mps);
+           windSource->name(), (unsigned long)(kSampleIntervalMs / 1000),
+           (unsigned long)latest.tsSeconds, latest.mps);
   server.send(200, "application/json", body);
 }
 
 void handleHistory() {
-  String range = "24h";
-  if (server.hasArg("range")) {
-    range = server.arg("range");
-  }
-
-  if (range == "week") {
-    streamHistoryJson("week", 0, false);
+  if (!server.hasArg("seconds")) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"missing_seconds\"}");
     return;
   }
 
-  WindSample latest{};
-  if (!history.latest(latest)) {
-    streamHistoryJson("24h", 0, false);
+  const uint32_t requestedSeconds = (uint32_t)server.arg("seconds").toInt();
+  if (requestedSeconds == 0) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"invalid_seconds\"}");
     return;
   }
 
-  const uint32_t cutoffTs = latest.tsSeconds > kWindow24hSeconds ? latest.tsSeconds - kWindow24hSeconds : 0;
-  streamHistoryJson("24h", cutoffTs, true);
+  static WindSample scratch[WindHistory::kMaxQueryPoints];
+  const size_t count = history.copyLastSeconds(requestedSeconds, scratch, WindHistory::kMaxQueryPoints);
+  streamJsonPoints(scratch, count, requestedSeconds);
 }
 
 void handleHealth() {
@@ -227,8 +201,9 @@ void handleHealth() {
   snprintf(body, sizeof(body),
            "{\"ok\":true,\"source\":\"%s\",\"storedSamples\":%u,\"uptimeSeconds\":%lu,"
            "\"apActive\":%s,\"staConnected\":%s}",
-           windSource->name(), (unsigned int)history.size(), (unsigned long)(millis() / 1000),
-           apActive ? "true" : "false", staConnected ? "true" : "false");
+           windSource->name(), (unsigned int)history.totalSamples(),
+           (unsigned long)(millis() / 1000), apActive ? "true" : "false",
+           staConnected ? "true" : "false");
   server.send(200, "application/json", body);
 }
 

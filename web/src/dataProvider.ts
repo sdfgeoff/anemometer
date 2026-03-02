@@ -3,10 +3,8 @@ export type WindPoint = {
   mps: number
 }
 
-export type HistoryRange = '24h' | 'week'
-
 export type HistoryResponse = {
-  range: HistoryRange
+  seconds: number
   count: number
   points: WindPoint[]
 }
@@ -22,12 +20,12 @@ export type CurrentResponse = {
 
 export interface WindDataProvider {
   getCurrent(): Promise<CurrentResponse>
-  getHistory(range: HistoryRange): Promise<HistoryResponse>
+  getHistory(seconds: number): Promise<HistoryResponse>
 }
 
 class DummyWindProvider implements WindDataProvider {
-  private readonly sampleIntervalSeconds = 30
-  private readonly weekSamples = 7 * 24 * 60 * 2
+  private readonly sampleIntervalSeconds = 5
+  private readonly weekSamples = (7 * 24 * 60 * 60) / this.sampleIntervalSeconds
   private samples: WindPoint[]
 
   constructor() {
@@ -51,13 +49,13 @@ class DummyWindProvider implements WindDataProvider {
     }
   }
 
-  async getHistory(range: HistoryRange): Promise<HistoryResponse> {
+  async getHistory(seconds: number): Promise<HistoryResponse> {
     this.rollIfNeeded()
-    const points =
-      range === '24h' ? this.samples.slice(-(24 * 60 * 2)) : this.samples.slice(-this.weekSamples)
+    const wanted = Math.max(1, Math.floor(seconds / this.sampleIntervalSeconds))
+    const points = this.samples.slice(-wanted)
 
     return {
-      range,
+      seconds,
       count: points.length,
       points,
     }
@@ -91,8 +89,8 @@ class HttpWindProvider implements WindDataProvider {
     return this.fetchJson<CurrentResponse>('/api/current')
   }
 
-  async getHistory(range: HistoryRange): Promise<HistoryResponse> {
-    return this.fetchJson<HistoryResponse>(`/api/history?range=${range}`)
+  async getHistory(seconds: number): Promise<HistoryResponse> {
+    return this.fetchJson<HistoryResponse>(`/api/history?seconds=${seconds}`)
   }
 
   private async fetchJson<T>(path: string): Promise<T> {
@@ -119,13 +117,13 @@ class AutoWindProvider implements WindDataProvider {
     }
   }
 
-  async getHistory(range: HistoryRange): Promise<HistoryResponse> {
-    if (this.useDummy) return this.dummy.getHistory(range)
+  async getHistory(seconds: number): Promise<HistoryResponse> {
+    if (this.useDummy) return this.dummy.getHistory(seconds)
     try {
-      return await this.http.getHistory(range)
+      return await this.http.getHistory(seconds)
     } catch {
       this.useDummy = true
-      return this.dummy.getHistory(range)
+      return this.dummy.getHistory(seconds)
     }
   }
 }
