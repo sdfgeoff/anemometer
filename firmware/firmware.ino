@@ -347,6 +347,7 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   logLine("[boot] anemometer starting");
+  Serial.printf("[boot] build %s %s\n", __DATE__, __TIME__);
 
   setupRpr220IrLedControl();
 
