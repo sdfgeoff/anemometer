@@ -99,6 +99,8 @@ Edit constants in `firmware/firmware.ino`:
 - `kRpr220Pin`
 - `kRpr220IrLedEnablePin`
 - `kRpr220IrLedActiveHigh`
+- `kRpr220VirtualVccPin`
+- `kRpr220VirtualGndPin`
 - `kPulsesPerRevolution` (currently `12`)
 - `kMpsPerHz` (calibration)
 

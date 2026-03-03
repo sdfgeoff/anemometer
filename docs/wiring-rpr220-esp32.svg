@@ -27,19 +27,19 @@
   <text class="h2" x="58" y="130">ESP32 LOLIN32 Lite (Dev Board)</text>
 
   <rect class="chip" x="92" y="170" width="360" height="580" rx="10"/>
-  <text class="txt" x="116" y="214">3V3</text>
+  <text class="txt" x="116" y="214">GPIO18 (Virtual VCC, drive HIGH)</text>
   <circle class="node" cx="420" cy="208" r="6"/>
 
-  <text class="txt" x="116" y="294">GND</text>
+  <text class="txt" x="116" y="294">GPIO5 (Virtual GND, drive LOW)</text>
   <circle class="node" cx="420" cy="288" r="6"/>
 
-  <text class="txt" x="116" y="374">GPIO18 (Pulse Input)</text>
+  <text class="txt" x="116" y="374">GPIO19 (Pulse Input)</text>
   <circle class="node" cx="420" cy="368" r="6"/>
 
-  <text class="txt" x="116" y="454">GPIO19 (IR LED Control)</text>
+  <text class="txt" x="116" y="454">GPIO23 (IR LED Control)</text>
   <circle class="node" cx="420" cy="448" r="6"/>
 
-  <text class="small" x="116" y="510">Firmware defaults GPIO19 HIGH (LED ON)</text>
+  <text class="small" x="116" y="510">Firmware: GPIO18=HIGH, GPIO5=LOW, GPIO23=HIGH(default)</text>
 
   <rect class="panel" x="560" y="90" width="684" height="700" rx="14"/>
   <text class="h2" x="582" y="130">RPR220 Bare Sensor + External Components</text>
@@ -59,41 +59,32 @@
   <text class="txt" x="838" y="482">Phototransistor Emitter</text>
   <circle class="node" cx="1158" cy="476" r="6"/>
 
-  <!-- R1 LED series resistor -->
   <rect class="res" x="650" y="430" width="120" height="36" rx="4"/>
   <text class="txt" x="666" y="453">R1 220Ω</text>
 
-  <!-- R2 pull-up resistor -->
   <rect class="res" x="690" y="180" width="120" height="36" rx="4"/>
   <text class="txt" x="706" y="203">R2 10kΩ</text>
 
-  <!-- Optional capacitor -->
   <line class="cap opt" x1="760" y1="620" x2="760" y2="650"/>
   <line class="cap opt" x1="780" y1="620" x2="780" y2="650"/>
   <text class="small" x="796" y="640">C1 100nF (optional)</text>
 
-  <!-- LED drive path: GPIO19 -> R1 -> LED anode -->
   <path class="wire-led" d="M420 448 L650 448"/>
   <path class="wire-led" d="M770 448 C880 448, 980 316, 1158 316"/>
 
-  <!-- LED cathode to GND -->
   <path class="wire-gnd" d="M1158 366 C1020 366, 900 288, 420 288"/>
 
-  <!-- Pull-up path: 3V3 -> R2 -> collector/sense net -->
   <path class="wire-vcc" d="M420 208 L690 208"/>
   <path class="wire-vcc" d="M810 208 C930 208, 1000 426, 1158 426"/>
 
-  <!-- Sense path collector -> GPIO18 -->
   <path class="wire-sig" d="M1158 426 C980 426, 900 368, 420 368"/>
 
-  <!-- Emitter to GND -->
   <path class="wire-gnd" d="M1158 476 C980 476, 900 288, 420 288"/>
 
-  <!-- Optional cap from collector/sense net to GND -->
   <path class="wire-sig opt" d="M920 426 L760 426 L760 620"/>
   <path class="wire-gnd opt" d="M780 650 L780 700 L420 700 L420 288"/>
 
   <rect class="note" x="582" y="700" width="638" height="70" rx="8"/>
-  <text class="small" x="602" y="728">GPIO18 is connected to 3V3 only through R2 (10k pull-up), not directly hard-wired.</text>
-  <text class="small" x="602" y="752">This is the standard phototransistor pull-up topology for digital sensing.</text>
+  <text class="small" x="602" y="728">GPIO19 is pulled up through R2 to GPIO18 (virtual VCC), not directly shorted.</text>
+  <text class="small" x="602" y="752">This matches your GPIO-powered wiring approach for low-current sensor operation.</text>
 </svg>
