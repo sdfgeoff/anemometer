@@ -15,8 +15,8 @@ constexpr uint8_t kRpr220IrLedEnablePin = 33;
 constexpr bool kRpr220IrLedActiveHigh = true;
 constexpr uint8_t kRpr220VirtualVccPin = 25;
 constexpr uint8_t kRpr220VirtualGndPin = 26;
-constexpr uint16_t kPulsesPerRevolution = 12;
-constexpr float kMpsPerHz = 1.0f;  // Replace with your calibration factor.
+constexpr uint16_t kPulsesPerRevolution = 5;
+constexpr float kMpsPerHz = 0.63f;  // Geometry-based initial estimate (r=60mm, TSR~0.6).
 
 constexpr uint32_t kSampleIntervalMs = 5000;
 
