@@ -36,6 +36,19 @@ type WifiStatus = {
   credentialsSaved: boolean
 }
 
+type SensorStatus = {
+  ok: boolean
+  mode: 'dummy' | 'rpr220'
+  threshold?: number
+  baseline?: number
+  reflected?: number
+  signal?: number
+  aboveThreshold?: boolean
+  calibrating?: boolean
+  calibrationMin?: number
+  calibrationMax?: number
+}
+
 function unitLabel(unit: DisplayUnit): string {
   if (unit === 'mps') return 'm/s'
   if (unit === 'kmh') return 'km/h'
@@ -200,6 +213,8 @@ function App() {
   const [wifiSsid, setWifiSsid] = useState('')
   const [wifiPassword, setWifiPassword] = useState('')
   const [wifiMessage, setWifiMessage] = useState<string | null>(null)
+  const [sensorStatus, setSensorStatus] = useState<SensorStatus | null>(null)
+  const [sensorMessage, setSensorMessage] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
 
   const selectedRangeOption =
@@ -256,19 +271,39 @@ function App() {
       }
     }
 
+    const loadSensorStatus = async () => {
+      try {
+        const res = await fetch('/api/sensor/status')
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        const data = (await res.json()) as SensorStatus
+        if (!cancelled) {
+          setSensorStatus(data)
+        }
+      } catch {
+        if (!cancelled) {
+          setSensorStatus(null)
+        }
+      }
+    }
+
     loadCurrent()
     loadHistory()
     loadWifiStatus()
+    loadSensorStatus()
 
     const currentTimer = window.setInterval(loadCurrent, 5000)
     const historyTimer = window.setInterval(loadHistory, 5000)
     const wifiTimer = window.setInterval(loadWifiStatus, 5000)
+    const sensorTimer = window.setInterval(loadSensorStatus, 1000)
 
     return () => {
       cancelled = true
       window.clearInterval(currentTimer)
       window.clearInterval(historyTimer)
       window.clearInterval(wifiTimer)
+      window.clearInterval(sensorTimer)
     }
   }, [selectedRangeOption.seconds])
 
@@ -304,6 +339,17 @@ function App() {
       setWifiMessage('Saved credentials cleared.')
     } catch (err) {
       setWifiMessage(`Failed to clear Wi-Fi config: ${(err as Error).message}`)
+    }
+  }
+
+  const onStartCalibration = async () => {
+    setSensorMessage('Starting calibration (10s)... rotate sensor during this period.')
+    try {
+      const res = await fetch('/api/sensor/calibrate/start?seconds=10', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setSensorMessage('Calibration started. Keep rotor moving for 10 seconds.')
+    } catch (err) {
+      setSensorMessage(`Failed to start calibration: ${(err as Error).message}`)
     }
   }
 
@@ -404,6 +450,22 @@ function App() {
               </div>
             </form>
             {wifiMessage && <p className="meta">{wifiMessage}</p>}
+            <hr />
+            <p className="meta">
+              Sensor mode: {sensorStatus?.mode ?? 'unknown'} | signal={sensorStatus?.signal ?? '--'} |
+              threshold={sensorStatus?.threshold ?? '--'} | baseline={sensorStatus?.baseline ?? '--'} |
+              reflected={sensorStatus?.reflected ?? '--'}
+            </p>
+            <p className="meta">
+              calibrating={sensorStatus?.calibrating ? 'yes' : 'no'} | min=
+              {sensorStatus?.calibrationMin ?? '--'} | max={sensorStatus?.calibrationMax ?? '--'}
+            </p>
+            <div className="buttons">
+              <button type="button" onClick={onStartCalibration}>
+                Start Sensor Calibration
+              </button>
+            </div>
+            {sensorMessage && <p className="meta">{sensorMessage}</p>}
           </article>
         </section>
       )}

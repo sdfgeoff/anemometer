@@ -6,6 +6,10 @@ void WindSourceDummy::begin() {
   randomSeed(esp_random());
 }
 
+void WindSourceDummy::tick(uint32_t nowMs) {
+  (void)nowMs;
+}
+
 float WindSourceDummy::readMps(float dtSeconds, uint32_t nowMs) {
   (void)dtSeconds;
 

@@ -29,12 +29,15 @@ constexpr uint32_t kStaConnectTimeoutMs = 20000;
 const char* kPrefsNamespace = "wifi";
 const char* kPrefsKeySsid = "ssid";
 const char* kPrefsKeyPass = "pass";
+const char* kSensorPrefsNamespace = "sensor";
+const char* kSensorPrefsKeyThreshold = "th";
 
 WebServer server(80);
 Preferences prefs;
 
 WindSourceDummy dummySource;
-WindSourceRPR220 rpr220Source(kRpr220Pin, kPulsesPerRevolution, kMpsPerHz);
+WindSourceRPR220 rpr220Source(kRpr220Pin, kRpr220IrLedEnablePin, kRpr220IrLedActiveHigh,
+                              kPulsesPerRevolution, kMpsPerHz);
 WindSource* windSource = nullptr;
 
 WindHistory history;
@@ -47,6 +50,7 @@ bool hasWifiCredentials = false;
 bool staConnectInProgress = false;
 bool staConnected = false;
 uint32_t staConnectStartedMs = 0;
+int persistedThreshold = 120;
 
 void setupRpr220IrLedControl() {
   pinMode(kRpr220VirtualVccPin, OUTPUT);
@@ -58,11 +62,6 @@ void setupRpr220IrLedControl() {
   digitalWrite(kRpr220VirtualGndPin, LOW);
   Serial.printf("[sensor] RPR220 virtual GND pin %u driven LOW\n",
                 (unsigned int)kRpr220VirtualGndPin);
-
-  pinMode(kRpr220IrLedEnablePin, OUTPUT);
-  digitalWrite(kRpr220IrLedEnablePin, kRpr220IrLedActiveHigh ? HIGH : LOW);
-  Serial.printf("[sensor] RPR220 IR LED pin %u defaulted %s\n", (unsigned int)kRpr220IrLedEnablePin,
-                kRpr220IrLedActiveHigh ? "ON" : "OFF");
 }
 
 void logLine(const char* msg) {
@@ -98,6 +97,19 @@ void clearWifiCredentials() {
   configuredSsid = "";
   configuredPassword = "";
   hasWifiCredentials = false;
+}
+
+void loadSensorCalibration() {
+  prefs.begin(kSensorPrefsNamespace, true);
+  persistedThreshold = prefs.getInt(kSensorPrefsKeyThreshold, 120);
+  prefs.end();
+}
+
+void saveSensorCalibrationThreshold(int threshold) {
+  prefs.begin(kSensorPrefsNamespace, false);
+  prefs.putInt(kSensorPrefsKeyThreshold, threshold);
+  prefs.end();
+  persistedThreshold = threshold;
 }
 
 void startProvisioningAp() {
@@ -216,6 +228,52 @@ void handleHistory() {
   streamJsonPoints(scratch, count, requestedSeconds);
 }
 
+bool usingRpr220Source() {
+  return windSource == static_cast<WindSource*>(&rpr220Source);
+}
+
+void handleSensorStatus() {
+  if (!usingRpr220Source()) {
+    server.send(200, "application/json", "{\"ok\":true,\"mode\":\"dummy\"}");
+    return;
+  }
+
+  Rpr220Snapshot snapshot{};
+  rpr220Source.snapshot(snapshot);
+
+  char body[384];
+  snprintf(body, sizeof(body),
+           "{\"ok\":true,\"mode\":\"rpr220\",\"threshold\":%d,\"baseline\":%d,\"reflected\":%d,"
+           "\"signal\":%d,\"aboveThreshold\":%s,\"calibrating\":%s,\"calibrationMin\":%d,"
+           "\"calibrationMax\":%d}",
+           snapshot.threshold, snapshot.baseline, snapshot.reflected, snapshot.signal,
+           snapshot.aboveThreshold ? "true" : "false", snapshot.calibrating ? "true" : "false",
+           snapshot.calibrationMin, snapshot.calibrationMax);
+  server.send(200, "application/json", body);
+}
+
+void handleSensorCalibrateStart() {
+  if (!usingRpr220Source()) {
+    server.send(400, "application/json",
+                "{\"ok\":false,\"error\":\"calibration_requires_rpr220_mode\"}");
+    return;
+  }
+
+  uint32_t durationMs = 10000;
+  if (server.hasArg("seconds")) {
+    const uint32_t requestedSeconds = (uint32_t)server.arg("seconds").toInt();
+    if (requestedSeconds > 0) {
+      durationMs = requestedSeconds * 1000;
+    }
+  }
+
+  rpr220Source.startCalibration(millis(), durationMs);
+  char body[128];
+  snprintf(body, sizeof(body), "{\"ok\":true,\"message\":\"calibration_started\",\"durationMs\":%lu}",
+           (unsigned long)durationMs);
+  server.send(200, "application/json", body);
+}
+
 void handleHealth() {
   char body[320];
   const bool apActive = WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA;
@@ -316,6 +374,8 @@ void setupRoutes() {
   server.on("/api/health", HTTP_GET, handleHealth);
   server.on("/api/current", HTTP_GET, handleCurrent);
   server.on("/api/history", HTTP_GET, handleHistory);
+  server.on("/api/sensor/status", HTTP_GET, handleSensorStatus);
+  server.on("/api/sensor/calibrate/start", HTTP_POST, handleSensorCalibrateStart);
 
   server.on("/api/wifi/status", HTTP_GET, handleWifiStatus);
   server.on("/api/wifi/config", HTTP_POST, handleWifiConfigPost);
@@ -351,6 +411,10 @@ void setup() {
 
   setupRpr220IrLedControl();
 
+  loadSensorCalibration();
+  rpr220Source.setThreshold(persistedThreshold);
+  Serial.printf("[sensor] loaded threshold=%d\n", persistedThreshold);
+
   windSource = kUseDummySource ? static_cast<WindSource*>(&dummySource)
                                : static_cast<WindSource*>(&rpr220Source);
   windSource->begin();
@@ -376,6 +440,22 @@ void setup() {
 }
 
 void loop() {
+  const uint32_t nowMs = millis();
+  windSource->tick(nowMs);
+
+  if (usingRpr220Source()) {
+    Rpr220CalibrationResult result{};
+    if (rpr220Source.consumeCalibrationResult(result)) {
+      if (result.valid) {
+        saveSensorCalibrationThreshold(result.threshold);
+        Serial.printf("[sensor] calibration complete min=%d max=%d threshold=%d (saved)\n",
+                      result.minSignal, result.maxSignal, result.threshold);
+      } else {
+        Serial.println("[sensor] calibration complete but invalid range");
+      }
+    }
+  }
+
   handleWiFiState();
   sampleIfDue();
   server.handleClient();

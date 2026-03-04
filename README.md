@@ -29,6 +29,8 @@ First-pass anemometer firmware and web UI.
   - `GET /api/health`
   - `GET /api/current`
   - `GET /api/history?seconds=<N>`
+  - `GET /api/sensor/status`
+  - `POST /api/sensor/calibrate/start?seconds=<N>`
   - `GET /api/wifi/status`
   - `POST /api/wifi/config` (`ssid`, `password`)
   - `POST /api/wifi/clear`
@@ -107,6 +109,16 @@ Edit constants in `firmware/firmware.ino`:
 ## Serial Logging
 
 Firmware logs boot, Wi-Fi state changes, and each 5-second sample over serial at `115200`.
+
+## Sensor Sampling (RPR220)
+
+`RPR220` now uses analog polling (not interrupt edges):
+1. LED OFF -> read baseline IR (`analogRead`).
+2. LED ON -> read reflected IR.
+3. Compute `signal = baseline - reflected`.
+4. Count a pulse on threshold crossing with hysteresis.
+
+Calibration is started from the web UI (`Settings`) and persisted in NVS.
 
 ## Unit Tests (Host)
 
