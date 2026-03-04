@@ -10,11 +10,11 @@
 
 namespace {
 constexpr bool kUseDummySource = false;
-constexpr uint8_t kRpr220Pin = 19;
-constexpr uint8_t kRpr220IrLedEnablePin = 23;
+constexpr uint8_t kRpr220Pin = 32;
+constexpr uint8_t kRpr220IrLedEnablePin = 33;
 constexpr bool kRpr220IrLedActiveHigh = true;
-constexpr uint8_t kRpr220VirtualVccPin = 18;
-constexpr uint8_t kRpr220VirtualGndPin = 5;
+constexpr uint8_t kRpr220VirtualVccPin = 25;
+constexpr uint8_t kRpr220VirtualGndPin = 26;
 constexpr uint16_t kPulsesPerRevolution = 12;
 constexpr float kMpsPerHz = 1.0f;  // Replace with your calibration factor.
 
