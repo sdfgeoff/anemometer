@@ -444,6 +444,11 @@ void loop() {
   windSource->tick(nowMs);
 
   if (usingRpr220Source()) {
+    const uint32_t events = rpr220Source.consumePulseEvents();
+    for (uint32_t i = 0; i < events; i++) {
+      Serial.println("[pulse] detected");
+    }
+
     Rpr220CalibrationResult result{};
     if (rpr220Source.consumeCalibrationResult(result)) {
       if (result.valid) {

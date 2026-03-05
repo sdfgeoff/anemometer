@@ -1,0 +1,31 @@
+/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/core/WMath.cpp.o: \
+ /home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/WMath.cpp \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_system/include/esp_system.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_err.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/newlib/platform_include/stdio.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_compiler.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_attr.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_bit_defs.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_idf_version.h \
+ /home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/esp32-hal-log.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_timer/include/esp_timer.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_hw_support/include/esp_etm.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_rom/esp32/include/esp32/rom/ets_sys.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_rom/include/esp_rom_sys.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/soc/esp32/include/soc/reset_reasons.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/soc/esp32/include/soc/soc_caps.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_config.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_level.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_assert.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_color.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_buffer.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_timestamp.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_write.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_format.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_args.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_macros.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_common/include/esp_assert.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_log_attr.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/log/include/esp_private/log_attr.h \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/esp_hw_support/include/esp_random.h

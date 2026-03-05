@@ -1,0 +1,58 @@
+[
+  {
+    "added_include_path": "/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32"
+  },
+  {
+    "added_include_path": "/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/variants/lolin32-lite"
+  },
+  {
+    "compile": {
+      "source_path": "/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/sketch/rpr220_raw_csv.ino.cpp",
+      "object_path": "/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/sketch/rpr220_raw_csv.ino.cpp.o",
+      "depfile_path": "/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/sketch/rpr220_raw_csv.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "/home/geoffrey/.arduino15/packages/esp32/tools/esp-x32/2507/bin/xtensa-esp32-elf-g++",
+        "-c",
+        "@/home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/flags/cpp_flags",
+        "-w",
+        "-Os",
+        "-Werror=return-type",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=240000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_LOLIN32_LITE",
+        "-DARDUINO_ARCH_ESP32",
+        "-DARDUINO_BOARD=\"LOLIN32_LITE\"",
+        "-DARDUINO_VARIANT=\"lolin32-lite\"",
+        "-DARDUINO_PARTITION_default",
+        "-DARDUINO_HOST_OS=\"linux\"",
+        "-DARDUINO_FQBN=\"esp32:esp32:lolin32-lite\"",
+        "-DESP32=ESP32",
+        "-DCORE_DEBUG_LEVEL=0",
+        "-DARDUINO_USB_CDC_ON_BOOT=0",
+        "@/home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/flags/defines",
+        "-I/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv",
+        "-iprefix",
+        "/home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/include/",
+        "@/home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/flags/includes",
+        "-I/home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/dio_qspi/include",
+        "-I/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32",
+        "-I/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/variants/lolin32-lite",
+        "@/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/build_opt.h",
+        "@/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/file_opts",
+        "/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/sketch/rpr220_raw_csv.ino.cpp",
+        "-o",
+        "/dev/null"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  }
+]

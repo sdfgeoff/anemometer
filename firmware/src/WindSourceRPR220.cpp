@@ -1,6 +1,7 @@
 #include "WindSourceRPR220.h"
 
 #include <Arduino.h>
+#include <string.h>
 
 WindSourceRPR220::WindSourceRPR220(uint8_t signalPin, uint8_t ledPin, bool ledActiveHigh,
                                    uint16_t pulsesPerRevolution, float mpsPerHz)
@@ -52,19 +53,53 @@ void WindSourceRPR220::tick(uint32_t nowMs) {
       calibrationMax_ = signal_;
     }
 
+    int clamped = signal_;
+    if (clamped < kSignalMin_) {
+      clamped = kSignalMin_;
+    } else if (clamped > kSignalMax_) {
+      clamped = kSignalMax_;
+    }
+    const size_t bin = (size_t)(clamped - kSignalMin_);
+    if (calibrationHistogram_[bin] < 65535) {
+      calibrationHistogram_[bin]++;
+    }
+    calibrationSampleCount_++;
+
     if (nowMs >= calibrationEndMs_) {
       calibrating_ = false;
       calibrationResultReady_ = true;
 
       calibrationResult_.minSignal = calibrationMin_;
       calibrationResult_.maxSignal = calibrationMax_;
-      calibrationResult_.valid = calibrationMax_ > calibrationMin_;
-      calibrationResult_.threshold = calibrationResult_.valid
-                                       ? (calibrationMin_ + calibrationMax_) / 2
-                                       : threshold_;
+      calibrationResult_.valid = false;
+      calibrationResult_.threshold = threshold_;
 
-      if (calibrationResult_.valid) {
-        threshold_ = calibrationResult_.threshold;
+      if (calibrationSampleCount_ >= 20) {
+        const uint32_t p10Target = (calibrationSampleCount_ * 10 + 99) / 100;
+        const uint32_t p90Target = (calibrationSampleCount_ * 90 + 99) / 100;
+
+        uint32_t cumulative = 0;
+        int p10 = threshold_;
+        int p90 = threshold_;
+        bool haveP10 = false;
+
+        for (size_t i = 0; i < kSignalBins_; i++) {
+          cumulative += calibrationHistogram_[i];
+          if (!haveP10 && cumulative >= p10Target) {
+            p10 = (int)i + kSignalMin_;
+            haveP10 = true;
+          }
+          if (cumulative >= p90Target) {
+            p90 = (int)i + kSignalMin_;
+            break;
+          }
+        }
+
+        if (p90 > p10) {
+          calibrationResult_.valid = true;
+          calibrationResult_.threshold = (p10 + p90) / 2;
+          threshold_ = calibrationResult_.threshold;
+        }
       }
     }
     return;
@@ -77,6 +112,7 @@ void WindSourceRPR220::tick(uint32_t nowMs) {
 
   if (!aboveThreshold_ && nowAbove) {
     pulseCount_++;
+    pulseEvents_++;
   }
   aboveThreshold_ = nowAbove;
 }
@@ -113,6 +149,8 @@ void WindSourceRPR220::startCalibration(uint32_t nowMs, uint32_t durationMs) {
   calibrationMin_ = 32767;
   calibrationMax_ = -32768;
   calibrationResultReady_ = false;
+  calibrationSampleCount_ = 0;
+  memset(calibrationHistogram_, 0, sizeof(calibrationHistogram_));
 }
 
 void WindSourceRPR220::cancelCalibration() {
@@ -127,6 +165,12 @@ bool WindSourceRPR220::consumeCalibrationResult(Rpr220CalibrationResult& out) {
   out = calibrationResult_;
   calibrationResultReady_ = false;
   return true;
+}
+
+uint32_t WindSourceRPR220::consumePulseEvents() {
+  const uint32_t events = pulseEvents_;
+  pulseEvents_ = 0;
+  return events;
 }
 
 void WindSourceRPR220::snapshot(Rpr220Snapshot& out) const {

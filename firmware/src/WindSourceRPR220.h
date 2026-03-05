@@ -36,6 +36,7 @@ class WindSourceRPR220 : public WindSource {
   void startCalibration(uint32_t nowMs, uint32_t durationMs);
   void cancelCalibration();
   bool consumeCalibrationResult(Rpr220CalibrationResult& out);
+  uint32_t consumePulseEvents();
 
   void snapshot(Rpr220Snapshot& out) const;
 
@@ -50,6 +51,7 @@ class WindSourceRPR220 : public WindSource {
   float mpsPerHz_;
 
   uint32_t pulseCount_ = 0;
+  uint32_t pulseEvents_ = 0;
   bool aboveThreshold_ = false;
 
   int threshold_ = 120;
@@ -69,4 +71,10 @@ class WindSourceRPR220 : public WindSource {
 
   bool calibrationResultReady_ = false;
   Rpr220CalibrationResult calibrationResult_ = {};
+
+  static constexpr int kSignalMin_ = -4095;
+  static constexpr int kSignalMax_ = 4095;
+  static constexpr size_t kSignalBins_ = (size_t)(kSignalMax_ - kSignalMin_ + 1);
+  uint16_t calibrationHistogram_[kSignalBins_] = {};
+  uint32_t calibrationSampleCount_ = 0;
 };

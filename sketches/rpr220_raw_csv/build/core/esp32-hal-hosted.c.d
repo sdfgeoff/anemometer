@@ -1,0 +1,3 @@
+/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv/build/core/esp32-hal-hosted.c.o: \
+ /home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/esp32-hal-hosted.c \
+ /home/geoffrey/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-f1a1df9b-v3/esp32/dio_qspi/include/sdkconfig.h
