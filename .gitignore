@@ -6,6 +6,7 @@ web/dist/
 firmware/build/
 firmware/.arduino/
 /build/
+/sketches/**/build/
 *.bin
 *.elf
 *.map

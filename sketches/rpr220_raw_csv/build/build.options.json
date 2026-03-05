@@ -1,9 +1,0 @@
-{
-  "additionalFiles": "",
-  "compiler.optimization_flags": "-Os",
-  "customBuildProperties": "",
-  "fqbn": "esp32:esp32:lolin32-lite",
-  "hardwareFolders": "/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3,/home/geoffrey/.arduino15/packages/esp32/hardware/esp32/3.3.3",
-  "otherLibrariesFolders": "/home/geoffrey/Arduino/libraries",
-  "sketchLocation": "/home/geoffrey/.Data/Projects/anemometer/sketches/rpr220_raw_csv"
-}
