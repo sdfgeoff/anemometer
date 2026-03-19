@@ -66,6 +66,11 @@ function formatSpeed(mps: number | undefined, unit: DisplayUnit): string {
   return `${convertSpeedFromMps(mps, unit).toFixed(2)} ${unitLabel(unit)}`
 }
 
+function formatVoltage(volts: number | undefined): string {
+  if (volts === undefined) return '--'
+  return `${volts.toFixed(2)} V`
+}
+
 function formatTs(tsMs: number): string {
   const d = new Date(tsMs)
   const mm = `${d.getMonth() + 1}`
@@ -107,6 +112,45 @@ function buildNiceYAxis(maxValue: number): { top: number; step: number; tickCoun
   return { top, step, tickCount }
 }
 
+function buildNiceAxisRange(
+  minValue: number,
+  maxValue: number,
+  includeZero: boolean
+): { min: number; max: number; step: number; tickCount: number } {
+  let min = minValue
+  let max = maxValue
+  if (includeZero) {
+    min = Math.min(0, min)
+    max = Math.max(0, max)
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    min = 0
+    max = 1
+  }
+
+  const span = Math.max(0.1, max - min)
+  const targetTicks = 6
+  const roughStep = span / targetTicks
+  const power = Math.pow(10, Math.floor(Math.log10(roughStep)))
+  const multipliers = [1, 1.5, 2, 2.5, 5, 10]
+
+  let step = multipliers[multipliers.length - 1] * power
+  for (const m of multipliers) {
+    const candidate = m * power
+    if (candidate >= roughStep) {
+      step = candidate
+      break
+    }
+  }
+
+  const axisMin = Math.floor(min / step) * step
+  const axisMax = Math.ceil(max / step) * step
+  let tickCount = Math.round((axisMax - axisMin) / step)
+  if (tickCount < 2) tickCount = 2
+
+  return { min: axisMin, max: axisMax, step, tickCount }
+}
+
 function TinyChart({
   points,
   unit,
@@ -116,41 +160,78 @@ function TinyChart({
   unit: DisplayUnit
   nowMs: number
 }) {
-  const { path, yGrid, xTicks } = useMemo(() => {
+  const { windPath, batteryPath, solarPath, yGrid, yRightTicks, xTicks } = useMemo(() => {
     const width = 1000
     const height = 300
     const padLeft = 58
-    const padRight = 16
+    const padRight = 74
     const padTop = 10
     const padBottom = 34
     const plotW = width - padLeft - padRight
     const plotH = height - padTop - padBottom
 
     if (points.length < 2) {
-      const axis = buildNiceYAxis(5)
+      const axis = buildNiceYAxis(5) // left (wind)
+      const voltageAxis = buildNiceAxisRange(0, 20, true) // right (voltage)
       const emptyY = Array.from({ length: axis.tickCount + 1 }, (_, i) => {
         const value = axis.top - i * axis.step
         return { y: padTop + (i / axis.tickCount) * plotH, value }
       })
-      return { path: '', yGrid: emptyY, xTicks: [] as Array<{ x: number; label: string }> }
+      const rightTicks = Array.from({ length: voltageAxis.tickCount + 1 }, (_, i) => {
+        const frac = i / voltageAxis.tickCount
+        return {
+          y: padTop + frac * plotH,
+          value: voltageAxis.max - frac * (voltageAxis.max - voltageAxis.min),
+        }
+      })
+      return {
+        windPath: '',
+        batteryPath: '',
+        solarPath: '',
+        yGrid: emptyY,
+        yRightTicks: rightTicks,
+        xTicks: [] as Array<{ x: number; label: string }>,
+      }
     }
 
     const displayValues = points.map((p) => convertSpeedFromMps(p.mps, unit))
-    const axis = buildNiceYAxis(Math.max(1, ...displayValues))
+    const windAxis = buildNiceYAxis(Math.max(1, ...displayValues))
 
-    const d = displayValues
-      .map((v, i) => {
-        const x = padLeft + (i / (displayValues.length - 1)) * plotW
-        const y = padTop + (1 - v / axis.top) * plotH
-        return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
-      })
-      .join(' ')
+    const batteryValues = points.map((p) => p.batteryV).filter((v): v is number => v !== undefined)
+    const solarValues = points.map((p) => p.solarV).filter((v): v is number => v !== undefined)
+    const voltageValues = [...batteryValues, ...solarValues]
+    const voltageMin = voltageValues.length ? Math.min(...voltageValues) : 0
+    const voltageMax = voltageValues.length ? Math.max(...voltageValues) : 20
+    const voltageAxis = buildNiceAxisRange(voltageMin, voltageMax, true)
 
-    const grid = Array.from({ length: axis.tickCount + 1 }, (_, i) => {
-      const frac = i / axis.tickCount
+    const toPath = (values: number[], axisMin: number, axisMax: number) =>
+      values
+        .map((v, i) => {
+          const x = padLeft + (i / (values.length - 1)) * plotW
+          const y = padTop + (1 - (v - axisMin) / Math.max(0.0001, axisMax - axisMin)) * plotH
+          return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
+        })
+        .join(' ')
+
+    const windD = toPath(displayValues, 0, windAxis.top)
+    const batteryD =
+      batteryValues.length === points.length ? toPath(points.map((p) => p.batteryV ?? 0), voltageAxis.min, voltageAxis.max) : ''
+    const solarD =
+      solarValues.length === points.length ? toPath(points.map((p) => p.solarV ?? 0), voltageAxis.min, voltageAxis.max) : ''
+
+    const grid = Array.from({ length: windAxis.tickCount + 1 }, (_, i) => {
+      const frac = i / windAxis.tickCount
       return {
         y: padTop + frac * plotH,
-        value: axis.top - i * axis.step,
+        value: windAxis.top - i * windAxis.step,
+      }
+    })
+
+    const rightTicks = Array.from({ length: voltageAxis.tickCount + 1 }, (_, i) => {
+      const frac = i / voltageAxis.tickCount
+      return {
+        y: padTop + frac * plotH,
+        value: voltageAxis.max - frac * (voltageAxis.max - voltageAxis.min),
       }
     })
 
@@ -167,7 +248,7 @@ function TinyChart({
       return { x, label: formatTs(labelMs) }
     })
 
-    return { path: d, yGrid: grid, xTicks: ticks }
+    return { windPath: windD, batteryPath: batteryD, solarPath: solarD, yGrid: grid, yRightTicks: rightTicks, xTicks: ticks }
   }, [points, unit, nowMs])
 
   return (
@@ -180,11 +261,20 @@ function TinyChart({
       </defs>
       <rect x="0" y="0" width="1000" height="300" fill="#f2efe7" />
       <line className="chartAxis" x1="58" y1="10" x2="58" y2="266" />
-      <line className="chartAxis" x1="58" y1="266" x2="984" y2="266" />
+      <line className="chartAxis" x1="926" y1="10" x2="926" y2="266" />
+      <line className="chartAxis" x1="58" y1="266" x2="926" y2="266" />
       {yGrid.map((g) => (
         <g key={`y-${g.y}`}>
-          <line className="chartGrid" x1="58" y1={g.y} x2="984" y2={g.y} />
+          <line className="chartGrid" x1="58" y1={g.y} x2="926" y2={g.y} />
           <text className="chartAxisLabel" x="52" y={g.y + 4} textAnchor="end">
+            {g.value.toFixed(1)}
+          </text>
+        </g>
+      ))}
+      {yRightTicks.map((g) => (
+        <g key={`yr-${g.y}`}>
+          <line className="chartTick" x1="926" y1={g.y} x2="932" y2={g.y} />
+          <text className="chartAxisLabel chartAxisLabelRight" x="936" y={g.y + 4} textAnchor="start">
             {g.value.toFixed(1)}
           </text>
         </g>
@@ -197,7 +287,12 @@ function TinyChart({
           </text>
         </g>
       ))}
-      <path d={path} fill="none" stroke="url(#lineGradient)" strokeWidth="4" />
+      <path d={windPath} fill="none" stroke="url(#lineGradient)" strokeWidth="4" />
+      <path d={batteryPath} fill="none" stroke="#d62828" strokeWidth="2.5" />
+      <path d={solarPath} fill="none" stroke="#f4a261" strokeWidth="2.5" />
+      <text className="chartLegend" x="70" y="24">Wind</text>
+      <text className="chartLegend chartLegendBattery" x="140" y="24">Battery V</text>
+      <text className="chartLegend chartLegendSolar" x="246" y="24">Solar V</text>
     </svg>
   )
 }
@@ -308,6 +403,8 @@ function App() {
   }, [selectedRangeOption.seconds])
 
   const latestMps = current?.mps ?? historyPoints.at(-1)?.mps
+  const latestBatteryV = current?.batteryV ?? historyPoints.at(-1)?.batteryV
+  const latestSolarV = current?.solarV ?? historyPoints.at(-1)?.solarV
 
   const onWifiSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -383,6 +480,14 @@ function App() {
           <article>
             <h2>Current Speed</h2>
             <p>{formatSpeed(latestMps, selectedUnit)}</p>
+          </article>
+          <article>
+            <h2>Battery</h2>
+            <p>{formatVoltage(latestBatteryV)}</p>
+          </article>
+          <article>
+            <h2>Solar</h2>
+            <p>{formatVoltage(latestSolarV)}</p>
           </article>
           <article>
             <h2>Source</h2>

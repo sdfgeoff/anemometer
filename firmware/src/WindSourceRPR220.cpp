@@ -14,7 +14,7 @@ WindSourceRPR220::WindSourceRPR220(uint8_t signalPin, uint8_t ledPin, bool ledAc
 void WindSourceRPR220::begin() {
   pinMode(signalPin_, INPUT);
   pinMode(ledPin_, OUTPUT);
-  setLed(true);
+  setLed(false);
   measureSignal();
   aboveThreshold_ = signal_ >= threshold_;
 }
@@ -34,6 +34,7 @@ void WindSourceRPR220::measureSignal() {
   reflected_ = analogRead(signalPin_);
 
   signal_ = baseline_ - reflected_;
+  setLed(false);
 }
 
 void WindSourceRPR220::tick(uint32_t nowMs) {
@@ -141,6 +142,14 @@ void WindSourceRPR220::setThreshold(int threshold) {
 
 int WindSourceRPR220::threshold() const {
   return threshold_;
+}
+
+void WindSourceRPR220::setLowPowerMode(bool enabled) {
+  lowPowerMode_ = enabled;
+  pollIntervalMicros_ = lowPowerMode_ ? 10000 : 2000;
+  if (lowPowerMode_) {
+    setLed(false);
+  }
 }
 
 void WindSourceRPR220::startCalibration(uint32_t nowMs, uint32_t durationMs) {

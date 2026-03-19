@@ -48,7 +48,7 @@ std::vector<WindSample> query(WindHistory& h, uint32_t seconds) {
 
 void feed(WindHistory& h, uint32_t durationSeconds) {
   for (uint32_t ts = 0; ts <= durationSeconds; ts += WindHistory::kBaseSamplePeriodSeconds) {
-    h.push(ts, (float)ts / 100.0f);
+    h.push(ts, (float)ts / 100.0f, 12.0f, 18.0f);
   }
 }
 
@@ -68,8 +68,8 @@ int main() {
     assertTrue(!samples1h.empty(), "1h query should return samples");
 
     assertMonotonicTs(samples15m, 5, "15m should use 5s tier");
-    assertMonotonicTs(samples30m, 10, "30m should use 10s tier");
-    assertMonotonicTs(samples1h, 30, "1h should use 30s tier");
+    assertMonotonicTs(samples30m, 5, "30m should use 5s tier");
+    assertMonotonicTs(samples1h, 300, "1h should use 5m tier");
   }
 
   {
@@ -82,8 +82,8 @@ int main() {
     assertTrue(!samples4h.empty(), "4h query should return samples");
     assertTrue(!samples24h.empty(), "24h query should return samples");
 
-    assertMonotonicTs(samples4h, 60, "4h should use 60s tier");
-    assertMonotonicTs(samples24h, 60, "24h should use 60s tier");
+    assertMonotonicTs(samples4h, 300, "4h should use 5m tier");
+    assertMonotonicTs(samples24h, 300, "24h should use 5m tier");
   }
 
   {
@@ -99,18 +99,20 @@ int main() {
   }
 
   {
-    // Verify bucket averaging behavior on 10s tier.
+    // Verify bucket averaging behavior on 5s tier.
     WindHistory h;
-    h.push(0, 10.0f);
-    h.push(5, 20.0f);
-    h.push(10, 30.0f);
-    h.push(15, 40.0f);
+    h.push(0, 10.0f, 11.0f, 17.0f);
+    h.push(5, 20.0f, 13.0f, 19.0f);
+    h.push(10, 30.0f, 10.0f, 16.0f);
+    h.push(15, 40.0f, 14.0f, 20.0f);
 
     auto samples = query(h, 30 * 60);
     assertTrue(!samples.empty(), "averaging query should return samples");
 
-    // First completed 10s bucket [0,10) average is 15.0.
-    assertNear(samples[0].mps, 15.0f, 0.11f, "10s bucket average should be correct");
+    // First completed 5s bucket [0,5) average is 10.0.
+    assertNear(samples[0].mps, 10.0f, 0.11f, "5s bucket average should be correct");
+    assertNear(samples[0].batteryV, 11.0f, 0.02f, "5s battery average should be correct");
+    assertNear(samples[0].solarV, 17.0f, 0.02f, "5s solar average should be correct");
   }
 
   std::cout << "All WindHistory tests passed\n";

@@ -197,6 +197,25 @@ button.active {
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 }
 
+.chartAxisLabelRight {
+  fill: #7a4f18;
+}
+
+.chartLegend {
+  fill: #264653;
+  font-size: 18px;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  font-weight: 600;
+}
+
+.chartLegendBattery {
+  fill: #d62828;
+}
+
+.chartLegendSolar {
+  fill: #b56a00;
+}
+
 .meta {
   margin-top: 0.5rem;
   color: #4f5d75;

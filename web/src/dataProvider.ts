@@ -1,6 +1,8 @@
 export type WindPoint = {
   ts: number
   mps: number
+  batteryV?: number
+  solarV?: number
 }
 
 export type HistoryResponse = {
@@ -16,6 +18,8 @@ export type CurrentResponse = {
   sampleIntervalSeconds?: number
   ts?: number
   mps?: number
+  batteryV?: number
+  solarV?: number
 }
 
 export interface WindDataProvider {
@@ -32,7 +36,12 @@ class DummyWindProvider implements WindDataProvider {
     const now = Math.floor(Date.now() / 1000)
     this.samples = Array.from({ length: this.weekSamples }, (_, i) => {
       const ts = now - (this.weekSamples - i) * this.sampleIntervalSeconds
-      return { ts, mps: this.synthMps(ts) }
+      return {
+        ts,
+        mps: this.synthMps(ts),
+        batteryV: this.synthBatteryV(ts),
+        solarV: this.synthSolarV(ts),
+      }
     })
   }
 
@@ -46,6 +55,8 @@ class DummyWindProvider implements WindDataProvider {
       sampleIntervalSeconds: this.sampleIntervalSeconds,
       ts: latest.ts,
       mps: latest.mps,
+      batteryV: latest.batteryV,
+      solarV: latest.solarV,
     }
   }
 
@@ -67,7 +78,12 @@ class DummyWindProvider implements WindDataProvider {
 
     let nextTs = latestTs + this.sampleIntervalSeconds
     while (nextTs <= now) {
-      this.samples.push({ ts: nextTs, mps: this.synthMps(nextTs) })
+      this.samples.push({
+        ts: nextTs,
+        mps: this.synthMps(nextTs),
+        batteryV: this.synthBatteryV(nextTs),
+        solarV: this.synthSolarV(nextTs),
+      })
       if (this.samples.length > this.weekSamples) {
         this.samples.shift()
       }
@@ -81,6 +97,20 @@ class DummyWindProvider implements WindDataProvider {
     const gust = 1.5 * Math.sin((2 * Math.PI * t) / 62)
     const noise = (Math.random() - 0.5) * 0.4
     return Math.max(0, slow + gust + noise)
+  }
+
+  private synthBatteryV(tsSeconds: number): number {
+    const solar = this.synthSolarV(tsSeconds)
+    const chargeBias = solar > 5 ? 0.35 : -0.2
+    const ripple = 0.06 * Math.sin((2 * Math.PI * tsSeconds) / 1800)
+    return Math.max(10.5, Math.min(14.8, 12.6 + chargeBias + ripple))
+  }
+
+  private synthSolarV(tsSeconds: number): number {
+    const daySeconds = ((tsSeconds % 86400) + 86400) % 86400
+    const daylight = Math.max(0, Math.sin(((daySeconds - 6 * 3600) / (12 * 3600)) * Math.PI))
+    const cloud = 0.25 * Math.sin((2 * Math.PI * tsSeconds) / 1700)
+    return Math.max(0, 18.0 * daylight + 2.0 * cloud)
   }
 }
 

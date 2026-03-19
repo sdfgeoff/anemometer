@@ -17,8 +17,18 @@ constexpr uint8_t kRpr220VirtualVccPin = 25;
 constexpr uint8_t kRpr220VirtualGndPin = 26;
 constexpr uint16_t kPulsesPerRevolution = 5;
 constexpr float kMpsPerHz = 0.63f;  // Geometry-based initial estimate (r=60mm, TSR~0.6).
+constexpr uint8_t kSolarVoltagePin = 39;    // VN (ADC1_CH3)
+constexpr uint8_t kBatteryVoltagePin = 36;  // VP (ADC1_CH0)
+constexpr float kAdcRefVolts = 3.3f;
+constexpr float kAdcMaxCounts = 4095.0f;
+constexpr float kDividerScale = 10.0f;  // 10:1 divider, pin voltage is source/10.
 
-constexpr uint32_t kSampleIntervalMs = 5000;
+constexpr uint32_t kSampleIntervalDayMs = 5000;
+constexpr uint32_t kSampleIntervalNightMs = 5UL * 60UL * 1000UL;
+constexpr float kSolarNightThresholdV = 0.5f;
+constexpr float kSolarDayThresholdV = 0.6f;
+constexpr uint32_t kNightEnterHoldMs = 15UL * 60UL * 1000UL;
+constexpr uint32_t kDayExitHoldMs = 3UL * 60UL * 1000UL;
 
 const char* kApSsid = "anemometer";
 constexpr bool kApOpenNetwork = true;
@@ -42,6 +52,13 @@ WindSource* windSource = nullptr;
 
 WindHistory history;
 uint32_t lastSampleMs = 0;
+float latestBatteryV = 0.0f;
+float latestSolarV = 0.0f;
+bool havePowerSample = false;
+bool nightMode = false;
+bool wifiEnabled = true;
+uint32_t firstDarkMs = 0;
+uint32_t firstBrightMs = 0;
 
 String configuredSsid;
 String configuredPassword;
@@ -51,6 +68,18 @@ bool staConnectInProgress = false;
 bool staConnected = false;
 uint32_t staConnectStartedMs = 0;
 int persistedThreshold = 120;
+
+bool usingRpr220Source();
+
+float readScaledVoltage(uint8_t pin) {
+  const int raw = analogRead(pin);
+  const float pinVolts = ((float)raw / kAdcMaxCounts) * kAdcRefVolts;
+  return pinVolts * kDividerScale;
+}
+
+uint32_t currentSampleIntervalMs() {
+  return nightMode ? kSampleIntervalNightMs : kSampleIntervalDayMs;
+}
 
 void setupRpr220IrLedControl() {
   pinMode(kRpr220VirtualVccPin, OUTPUT);
@@ -113,6 +142,7 @@ void saveSensorCalibrationThreshold(int threshold) {
 }
 
 void startProvisioningAp() {
+  wifiEnabled = true;
   WiFi.mode(WIFI_AP_STA);
   const bool apOk = kApOpenNetwork ? WiFi.softAP(kApSsid) : WiFi.softAP(kApSsid, kApPassword);
 
@@ -126,6 +156,9 @@ void startProvisioningAp() {
 }
 
 void beginStaConnect() {
+  if (!wifiEnabled) {
+    return;
+  }
   if (!hasWifiCredentials) {
     logLine("[wifi] No saved STA credentials");
     return;
@@ -138,6 +171,10 @@ void beginStaConnect() {
 }
 
 void handleWiFiState() {
+  if (!wifiEnabled) {
+    return;
+  }
+
   const wl_status_t status = WiFi.status();
 
   if (status == WL_CONNECTED) {
@@ -174,8 +211,81 @@ void handleWiFiState() {
   }
 }
 
+void disableWifiForNight() {
+  if (!wifiEnabled) {
+    return;
+  }
+
+  logLine("[power] entering night mode: disabling Wi-Fi");
+  WiFi.softAPdisconnect(true);
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+  staConnectInProgress = false;
+  staConnected = false;
+  wifiEnabled = false;
+}
+
+void enableWifiForDay() {
+  if (wifiEnabled) {
+    return;
+  }
+
+  logLine("[power] leaving night mode: enabling Wi-Fi");
+  startProvisioningAp();
+  if (hasWifiCredentials) {
+    beginStaConnect();
+  }
+}
+
+void applyNightMode(bool enabled) {
+  if (nightMode == enabled) {
+    return;
+  }
+
+  nightMode = enabled;
+  if (usingRpr220Source()) {
+    rpr220Source.setLowPowerMode(nightMode);
+  }
+
+  Serial.printf("[power] mode=%s sampleInterval=%lu ms\n", nightMode ? "night" : "day",
+                (unsigned long)currentSampleIntervalMs());
+
+  if (nightMode) {
+    disableWifiForNight();
+  } else {
+    enableWifiForDay();
+  }
+}
+
+void updateDayNightState(uint32_t nowMs, float solarV) {
+  if (solarV <= kSolarNightThresholdV) {
+    firstBrightMs = 0;
+    if (firstDarkMs == 0) {
+      firstDarkMs = nowMs;
+    }
+    if (!nightMode && nowMs - firstDarkMs >= kNightEnterHoldMs) {
+      applyNightMode(true);
+    }
+    return;
+  }
+
+  if (solarV >= kSolarDayThresholdV) {
+    firstDarkMs = 0;
+    if (firstBrightMs == 0) {
+      firstBrightMs = nowMs;
+    }
+    if (nightMode && nowMs - firstBrightMs >= kDayExitHoldMs) {
+      applyNightMode(false);
+    }
+    return;
+  }
+
+  firstDarkMs = 0;
+  firstBrightMs = 0;
+}
+
 void streamJsonPoints(const WindSample* samples, size_t count, uint32_t requestedSeconds) {
-  char line[96];
+  char line[160];
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "application/json", "");
   server.sendContent("{");
@@ -187,8 +297,9 @@ void streamJsonPoints(const WindSample* samples, size_t count, uint32_t requeste
     if (i > 0) {
       server.sendContent(",");
     }
-    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f}",
-             (unsigned long)samples[i].tsSeconds, samples[i].mps);
+    snprintf(line, sizeof(line), "{\"ts\":%lu,\"mps\":%.3f,\"batteryV\":%.3f,\"solarV\":%.3f}",
+             (unsigned long)samples[i].tsSeconds, samples[i].mps, samples[i].batteryV,
+             samples[i].solarV);
     server.sendContent(line);
   }
 
@@ -202,12 +313,13 @@ void handleCurrent() {
     return;
   }
 
-  char body[192];
+  char body[256];
   snprintf(body, sizeof(body),
            "{\"ok\":true,\"hasData\":true,\"source\":\"%s\",\"sampleIntervalSeconds\":%lu,"
-           "\"ts\":%lu,\"mps\":%.3f}",
-           windSource->name(), (unsigned long)(kSampleIntervalMs / 1000),
-           (unsigned long)latest.tsSeconds, latest.mps);
+           "\"ts\":%lu,\"mps\":%.3f,\"batteryV\":%.3f,\"solarV\":%.3f}",
+           windSource->name(), (unsigned long)(currentSampleIntervalMs() / 1000),
+           (unsigned long)latest.tsSeconds, latest.mps, havePowerSample ? latestBatteryV : 0.0f,
+           havePowerSample ? latestSolarV : 0.0f);
   server.send(200, "application/json", body);
 }
 
@@ -387,19 +499,27 @@ void setupRoutes() {
 
 void sampleIfDue() {
   const uint32_t nowMs = millis();
-  if (nowMs - lastSampleMs < kSampleIntervalMs) {
+  const uint32_t sampleIntervalMs = currentSampleIntervalMs();
+  if (nowMs - lastSampleMs < sampleIntervalMs) {
     return;
   }
 
   float dtSeconds = (nowMs - lastSampleMs) / 1000.0f;
   if (lastSampleMs == 0) {
-    dtSeconds = kSampleIntervalMs / 1000.0f;
+    dtSeconds = sampleIntervalMs / 1000.0f;
   }
 
   lastSampleMs = nowMs;
   const float mps = windSource->readMps(dtSeconds, nowMs);
-  history.push(nowMs / 1000, mps);
-  Serial.printf("[sample] ts=%lu mps=%.2f\n", (unsigned long)(nowMs / 1000), mps);
+  const float batteryV = readScaledVoltage(kBatteryVoltagePin);
+  const float solarV = readScaledVoltage(kSolarVoltagePin);
+  latestBatteryV = batteryV;
+  latestSolarV = solarV;
+  havePowerSample = true;
+  updateDayNightState(nowMs, solarV);
+  history.push(nowMs / 1000, mps, batteryV, solarV);
+  Serial.printf("[sample] ts=%lu mps=%.2f batt=%.2fV solar=%.2fV\n",
+                (unsigned long)(nowMs / 1000), mps, batteryV, solarV);
 }
 }  // namespace
 
@@ -408,6 +528,14 @@ void setup() {
   delay(200);
   logLine("[boot] anemometer starting");
   Serial.printf("[boot] build %s %s\n", __DATE__, __TIME__);
+  Serial.printf("[power] battery pin=%u solar pin=%u divider=%.1f:1\n",
+                (unsigned int)kBatteryVoltagePin, (unsigned int)kSolarVoltagePin, kDividerScale);
+  Serial.printf("[power] solar thresholds: night<=%.2fV for %lu ms, day>=%.2fV for %lu ms\n",
+                kSolarNightThresholdV, (unsigned long)kNightEnterHoldMs, kSolarDayThresholdV,
+                (unsigned long)kDayExitHoldMs);
+
+  pinMode(kBatteryVoltagePin, INPUT);
+  pinMode(kSolarVoltagePin, INPUT);
 
   setupRpr220IrLedControl();
 

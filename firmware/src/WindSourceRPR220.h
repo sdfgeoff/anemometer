@@ -32,6 +32,7 @@ class WindSourceRPR220 : public WindSource {
 
   void setThreshold(int threshold);
   int threshold() const;
+  void setLowPowerMode(bool enabled);
 
   void startCalibration(uint32_t nowMs, uint32_t durationMs);
   void cancelCalibration();
@@ -63,6 +64,7 @@ class WindSourceRPR220 : public WindSource {
 
   uint32_t lastPollMicros_ = 0;
   uint32_t pollIntervalMicros_ = 2000;
+  bool lowPowerMode_ = false;
 
   bool calibrating_ = false;
   uint32_t calibrationEndMs_ = 0;
